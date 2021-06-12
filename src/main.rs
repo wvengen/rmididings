@@ -1,10 +1,9 @@
 extern crate alsa;
 
-mod rmidiproc;
-mod rmididings;
-
 use std::error::Error;
 
+mod rmidiproc;
+mod rmididings;
 use rmidiproc::*;
 use rmididings::*;
 
