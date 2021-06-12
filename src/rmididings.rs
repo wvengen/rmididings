@@ -140,16 +140,24 @@ impl<'a> RMididings<'a> {
         }
     }
 
-    pub fn switch_scene(&mut self, scene: u8) -> () {
-        if self.current_scene == scene { return () }
+    pub fn switch_scene(&mut self, scene: u8) -> Result<(), Box<dyn Error>> {
+        if self.current_scene == scene { return Ok(()) }
 
-        self.post.run(Event::new());
+        // let mut evs = EventStream::one();
+        // self.post.run(&mut evs);
+        // for ev in evs.events.iter() { self.output_event(ev)?; };
+
         // TODO switch scene
         println!("TODO switch_scene");
-        self.pre.run(Event::new());
+
+        // let mut evs = EventStream::one();
+        // self.pre.run(&mut evs);
+        // for ev in evs.events.iter() { self.output_event(ev)?; };
+
+        Ok(())
     }
 
-    pub fn output_event(&self, ev: Event) -> Result<u32, Box<dyn Error>> {
+    pub fn output_event(&self, ev: &Event) -> Result<u32, Box<dyn Error>> {
         println!("output_event {}", ev.to_string());
         // TODO self.out_ports bounds checking (!)
         match ev.typ {
@@ -206,17 +214,13 @@ impl<'a> RMididings<'a> {
 
         println!("handle_midi_event {:?} - {}", alsaev, ev_in.to_string());
         // go through the processing chain
-        let ev_out = self.process_event(ev_in)?;
+        let mut evs = EventStream::from(ev_in);
+        self.patch.run(&mut evs);
 
         // and output any result from the chain
-        self.output_event(ev_out)?;
+        for ev in evs.events.iter() { self.output_event(ev)?; };
 
         return Ok(());
-    }
-
-    fn process_event(&self, ev: Event) -> Result<Event, Box<dyn Error>> {
-        // TODO self.control.run(ev);
-        Ok(self.patch.run(ev))
     }
 
     fn create_in_port(&mut self, name: &str) -> Result<i32, Box<dyn Error>> {

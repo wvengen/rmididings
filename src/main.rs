@@ -33,9 +33,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Started");
 
+    let patch = Chain!(Pass());
+
     md.run(RunArguments {
-        //patch: &(PortFilter(0) >> Channel(1)),
-        patch: &Pass(),
+        patch: &patch,
         ..RunArguments::default()
     })?;
 
