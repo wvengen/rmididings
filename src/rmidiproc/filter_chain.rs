@@ -42,7 +42,20 @@ impl FilterTrait for FilterChain {
             },
         }
     }
+
+    fn run_init(&self, evs: &mut EventStream) {
+        for f in self.filters.iter() {
+            f.run_init(evs);
+        }
+    }
+
+    fn run_exit(&self, evs: &mut EventStream) {
+        for f in self.filters.iter() {
+            f.run_exit(evs);
+        }
+    }
 }
+
 
 #[derive(Debug,PartialEq)]
 pub enum ConnectionType {

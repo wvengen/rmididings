@@ -124,6 +124,7 @@ impl<'a> RMididings<'a> {
 
         self.run_patch(self.pre, Event::new())?;
         self.run_patch(self.get_current_scene().init, Event::new())?;
+        self.run_init(self.get_current_scene().patch, Event::new())?;
 
         loop {
             if let Some(ev) = self.backend.run()? {
@@ -145,6 +146,7 @@ impl<'a> RMididings<'a> {
 
         // TODO make sure we don't run post and exit patch the first time
         //      we don't run this yet on init, but it would be nice to use
+        self.run_exit(self.get_current_scene().patch, Event::new())?;
         self.run_patch(self.get_current_scene().exit, Event::new())?;
         self.run_patch(self.post, Event::new())?;
 
@@ -152,6 +154,7 @@ impl<'a> RMididings<'a> {
 
         self.run_patch(self.pre, Event::new())?;
         self.run_patch(self.get_current_scene().init, Event::new())?;
+        self.run_init(self.get_current_scene().patch, Event::new())?;
 
         Ok(())
     }
@@ -161,9 +164,26 @@ impl<'a> RMididings<'a> {
         self.backend.output_event(&ev)
     }
 
+    // TODO put run_patch, run_init and run_exit together
     fn run_patch(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
         patch.run(&mut evs);
+        // output resulting events
+        for ev in evs.events.iter() { self.output_event(ev)?; };
+        Ok(())
+    }
+
+    fn run_init(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
+        let mut evs = EventStream::from(ev);
+        patch.run_init(&mut evs);
+        // output resulting events
+        for ev in evs.events.iter() { self.output_event(ev)?; };
+        Ok(())
+    }
+
+    fn run_exit(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
+        let mut evs = EventStream::from(ev);
+        patch.run_exit(&mut evs);
         // output resulting events
         for ev in evs.events.iter() { self.output_event(ev)?; };
         Ok(())

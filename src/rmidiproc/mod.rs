@@ -197,6 +197,22 @@ define_filter!(
     }
 );
 
+// Scene switching
+
+pub struct Init<'a>(pub &'a dyn FilterTrait);
+impl FilterTrait for Init<'_> {
+    fn run_init(&self, evs: &mut EventStream) {
+        self.0.run(evs);
+    }
+}
+
+pub struct Exit<'a>(pub &'a dyn FilterTrait);
+impl FilterTrait for Exit<'_> {
+    fn run_exit(&self, evs: &mut EventStream) {
+        self.0.run(evs);
+    }
+}
+
 // Misc
 
 define_filter!(

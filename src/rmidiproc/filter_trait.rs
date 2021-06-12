@@ -16,4 +16,9 @@ pub trait FilterTrait {
 
     // When selecting which events to keep and which not, implement filter_single.
     fn filter_single(&self, _evs: &Event) -> bool { true }
+
+    // Only used for Init filter
+    fn run_init(&self, evs: &mut EventStream) { }
+    // Only used for Exit filter
+    fn run_exit(&self, evs: &mut EventStream) { }
 }
