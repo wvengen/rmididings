@@ -4,8 +4,14 @@ use filter_trait::*;
 
 pub struct FilterChain {
     // need to make both public because of macro use
-    pub filters: Vec<Box<dyn FilterTrait>>,
-    pub connection: ConnectionType,
+    filters: Vec<Box<dyn FilterTrait>>,
+    connection: ConnectionType,
+}
+
+impl FilterChain {
+    pub fn new(connection: ConnectionType, filters: Vec<Box<dyn FilterTrait>>) -> Self {
+        FilterChain { connection, filters }
+    }
 }
 
 impl FilterTrait for FilterChain {
@@ -49,20 +55,20 @@ pub enum ConnectionType {
 #[macro_export]
 macro_rules! Chain {
     ( $($f:expr),+ ) => (
-        FilterChain {
-            connection: ConnectionType::Chain,
-            filters: vec!( $(Box::new($f)),+ ),
-        }
+        FilterChain::new(
+            ConnectionType::Chain,
+            vec!( $(Box::new($f)),+ )
+        )
     )
 }
 
 #[macro_export]
 macro_rules! Fork {
     ( $($f:expr),+ ) => (
-        FilterChain {
-            connection: ConnectionType::Fork,
-            filters: vec!( $(Box::new($f)),+ ),
-        }
+        FilterChain::new(
+            ConnectionType::Fork,
+            vec!( $(Box::new($f)),+ )
+        )
     )
 }
 
