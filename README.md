@@ -45,19 +45,18 @@ Even with the limited set we have now, it is possible to make slightly more comp
 
 ```rust
 let patch = Chain!(
-    ChannelFilter(0),
+    ChannelFilter(1),
     Fork!(
         Pass(),
         Chain!(Transpose(4), VelocityMultiply(0.8)),
         Chain!(Transpose(7), VelocityMultiply(0.5))
     ),
-    Channel(1)
+    Channel(2)
 );
 ```
 
-This example ignores any other channel than 0 (note that mididings' `data_offset` is not
-implemented yet, so we start counting at 0) and returns a major chord for the note, with
-higher notes slightly attenuated. Finally this is sent out at channel 1.
+This example ignores any other channel than 1 and returns a major chord for the note, with
+higher notes slightly attenuated. Finally this is sent out at channel 2.
 
 ## Scenes
 
@@ -66,13 +65,13 @@ Instead of a patch, one can pass `scenes` to the `run` function:
 ```rust
 md.run(RunArguments {
     scenes: &[
-        // Scene 0
+        // Scene 1
         &Scene {
             name: "Run",
             patch: &Pass(),
             ..Scene::default()
         },
-        // Scene 1
+        // Scene 2
         &Scene {
             name: "Pause",
             patch: &Discard(),
@@ -80,15 +79,15 @@ md.run(RunArguments {
         }
     ],
     control: &Fork!(
-      Chain!(KeyFilter(62), SceneSwitch(1), Discard()),
-      Chain!(KeyFilter(60), SceneSwitch(0), Discard())
+      Chain!(KeyFilter(62), SceneSwitch(2), Discard()),
+      Chain!(KeyFilter(60), SceneSwitch(1), Discard())
     ),
     ..RunArguments::default()
 })?;
 ```
 
 Here there are two scenes, one that passes all events and one that discards them.
-The `control` patch is always run, here the central C and the following D are used
+The `control` patch is always run, here the note central C and the following D are used
 to switch between the scenes.
 
 ## Plans
