@@ -8,6 +8,8 @@ pub struct Scene<'a> {
 }
 
 impl Scene<'_> {
+    pub const DEFAULT: Self = Scene { name: "", patch: &Discard(), init: &Discard(), exit: &Discard() };
+
     pub fn default() -> Self {
         // TODO automatic naming (e.g. using a Cell)
         Scene { name: "", patch: &Discard(), init: &Discard(), exit: &Discard() }

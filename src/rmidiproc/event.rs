@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub struct Event {
     pub typ: EventType,
     pub port: usize,
@@ -16,19 +16,18 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new() -> Event {
-        Event { typ: EventType::NONE, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
+    pub fn new(typ: EventType) -> Event {
+        Event { typ: typ, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
     }
 }
 
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self.typ {
-            EventType::NONE => "".to_string(),
             EventType::NOTEON => format!("port={} channel={}, note={} velocity={}", self.port, self.channel, self.note, self.velocity),
-            EventType::NOTEOFF => format!("port={} channel={}, note={}", self.port, self.channel, self.note),
+            EventType::NOTEOFF => format!("port={} channel={} note={}", self.port, self.channel, self.note),
             EventType::CTRL => format!("port={} channel={}, ctrl={} value={}", self.port, self.channel, self.ctrl, self.value),
-           EventType::SYSEX => format!("port={} sysex={:?}", self.port, self.sysex),
+            EventType::SYSEX => format!("port={} sysex={:?}", self.port, self.sysex),
         };
         write!(f, "Event type={} {}", self.typ.to_string(), s)
     }
@@ -37,11 +36,10 @@ impl fmt::Display for Event {
 #[derive(Debug,Copy,Clone,PartialEq)]
 #[allow(non_snake_case)]
 pub enum EventType {
-    NONE,
     NOTEON,
     NOTEOFF,
     CTRL,
-     SYSEX
+    SYSEX
     // TODO finish - see http://dsacre.github.io/mididings/doc/misc.html
     // TODO handle event type filters (combination of several types)
 }
@@ -49,7 +47,6 @@ pub enum EventType {
 impl fmt::Display for EventType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
-            EventType::NONE => "NONE",
             EventType::NOTEON => "NOTEON",
             EventType::NOTEOFF => "NOTEOFF",
             EventType::CTRL => "CTRL",
@@ -75,20 +72,20 @@ pub enum EventAttribute {
 
 #[allow(non_snake_case)]
 pub fn NoteOnEvent(port: usize, channel: u8, note: u8, velocity: u8) -> Event {
-    Event { typ: EventType::NOTEON, port, channel, note, velocity, ..Event::new() }
+    Event { port, channel, note, velocity, ..Event::new(EventType::NOTEON) }
 }
 
 #[allow(non_snake_case)]
 pub fn NoteOffEvent(port: usize, channel: u8, note: u8) -> Event {
-    Event { typ: EventType::NOTEOFF, port, channel, note, ..Event::new() }
+    Event { port, channel, note, ..Event::new(EventType::NOTEOFF) }
 }
 
 #[allow(non_snake_case)]
 pub fn CtrlEvent(port: usize, channel: u8, ctrl: u32, value: i32) -> Event {
-    Event { typ: EventType::CTRL, port, channel, ctrl, value, ..Event::new() }
+    Event { port, channel, ctrl, value, ..Event::new(EventType::CTRL) }
 }
 
 #[allow(non_snake_case)]
 pub fn SysExEvent(port: usize, sysex: &'static [u8]) -> Event {
-    Event { typ: EventType::SYSEX, port, sysex, ..Event::new() }
+    Event { port, sysex, ..Event::new(EventType::SYSEX) }
 }

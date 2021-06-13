@@ -199,6 +199,20 @@ define_filter!(
 
 // Scene switching
 
+define_filter!(
+    SceneSwitch(u8)
+    fn run(&self, evs: &mut EventStream) {
+        if evs.any() { evs.scene = self.0; }
+    }
+);
+
+define_filter!(
+    SceneSwitchOffset(i16)
+    fn run(&self, evs: &mut EventStream) {
+        if evs.any() { evs.scene = (evs.scene as i16 + self.0) as u8; }
+    }
+);
+
 pub struct Init<'a>(pub &'a dyn FilterTrait);
 impl FilterTrait for Init<'_> {
     fn run_init(&self, evs: &mut EventStream) {
@@ -218,7 +232,7 @@ impl FilterTrait for Exit<'_> {
 define_filter!(
     Print()
     fn run(&self, evs:  &mut EventStream) -> () {
-        println!("{}", evs.to_string());
+        if evs.any() { println!("{}", evs.to_string()); }
     }
 );
 

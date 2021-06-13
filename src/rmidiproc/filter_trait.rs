@@ -18,7 +18,7 @@ pub trait FilterTrait {
     fn filter_single(&self, _evs: &Event) -> bool { true }
 
     // Only used for Init filter
-    fn run_init(&self, evs: &mut EventStream) { }
+    fn run_init(&self, _evs: &mut EventStream) { }
     // Only used for Exit filter
-    fn run_exit(&self, evs: &mut EventStream) { }
+    fn run_exit(&self, _evs: &mut EventStream) { }
 }

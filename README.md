@@ -12,7 +12,8 @@ It is very early in development, and most things don't work. What does work:
 - Only supports the `alsa` backend, which ties it to Linux.
 - A limited set of filters, modifiers and generators.
 - A limited set of connections: `Chain` and `Fork`.
-- Running a single patch.
+- Scenes, scene switching and running a single patch.
+- Pre, post, init, exit and control patches.
 
 Some missing things can be implemented, but there are some limitations using Rust,
 e.g. syntax can differ, and not all variations of argument types to filters etc.
@@ -37,7 +38,7 @@ to the `run` function. You need to start with a connection type and include filt
 or generators inside of it. The default is just to pass all events:
 
 ```rust
-let patch = Chain!(Pass());
+let patch = Pass();
 ```
 
 Even with the limited set we have now, it is possible to make slightly more complex chains:
@@ -58,14 +59,43 @@ This example ignores any other channel than 0 (note that mididings' `data_offset
 implemented yet, so we start counting at 0) and returns a major chord for the note, with
 higher notes slightly attenuated. Finally this is sent out at channel 1.
 
+## Scenes
+
+Instead of a patch, one can pass `scenes` to the `run` function:
+
+```rust
+md.run(RunArguments {
+    scenes: &[
+        // Scene 0
+        &Scene {
+            name: "Run",
+            patch: &Pass(),
+            ..Scene::default()
+        },
+        // Scene 1
+        &Scene {
+            name: "Pause",
+            patch: &Discard(),
+            ..Scene::default()
+        }
+    ],
+    control: &Fork!(
+      Chain!(KeyFilter(62), SceneSwitch(1), Discard()),
+      Chain!(KeyFilter(60), SceneSwitch(0), Discard())
+    ),
+    ..RunArguments::default()
+})?;
+```
+
+Here there are two scenes, one that passes all events and one that discards them.
+The `control` patch is always run, here the central C and the following D are used
+to switch between the scenes.
 
 ## Plans
 
-- Adding more connections (and overhauling the filter chains).
-- Adding scenes.
 - Adding subscenes.
-- Improving syntax with macros.
 - OSC support, with filters etc. like MIDI (this was hard to do in mididings without threading issues).
+- Improving syntax with macros.
 - Adding port connected / disconnected event types.
 
 ## License

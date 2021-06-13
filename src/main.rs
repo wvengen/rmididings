@@ -32,23 +32,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     println!("Started");
 
-    let patch = Chain!(Pass());
+    let patch = Pass();
 
     md.run(RunArguments {
-        scenes: &[
-            // Scene 0
-            &Scene {
-                name: "Discard",
-                patch: &Discard(),
-                ..Scene::default()
-            },
-            // Scene 1
-            &Scene {
-                name: "Pass",
-                patch: &Discard(),
-                ..Scene::default()
-            }
-        ],
+        patch: &patch,
         ..RunArguments::default()
     })?;
 

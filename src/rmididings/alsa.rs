@@ -75,7 +75,7 @@ impl Backend {
         // TODO find a way to put this in the struct without borrow issue (for performance)
         let mut poll_input = self.alsaseq.input();
         if poll_input.event_input_pending(true)? > 0 {
-            Ok(Some(self.alsaseq_event_to_event(&poll_input.event_input()?)?))
+            Ok(self.alsaseq_event_to_event(&poll_input.event_input()?)?)
         } else {
             Ok(None)
         }
@@ -87,7 +87,7 @@ impl Backend {
         Ok(alsa::poll::poll(&mut poll_fds, 100)?)
     }
 
-    fn alsaseq_event_to_event(&self, alsaev: &seq::Event) -> Result<Event, Box<dyn Error>> {
+    fn alsaseq_event_to_event(&self, alsaev: &seq::Event) -> Result<Option<Event>, Box<dyn Error>> {
         // map alsa port to our own port (index in self.in_ports), fallback to port 0
         let alsa_port = alsaev.get_dest().port;
         let port = match self.in_ports.iter().position(|p| p == &alsa_port) {
@@ -98,21 +98,20 @@ impl Backend {
         // convert alsaseq event to our own kind of event
         if let Some(e) = alsaev.get_data::<seq::EvNote>() {
             if alsaev.get_type() == seq::EventType::Noteon {
-                Ok(NoteOnEvent(port, e.channel, e.note, e.velocity))
+                Ok(Some(NoteOnEvent(port, e.channel, e.note, e.velocity)))
             } else {
-                Ok(NoteOffEvent(port, e.channel, e.note))
+                Ok(Some(NoteOffEvent(port, e.channel, e.note)))
             }
         } else if let Some(e) = alsaev.get_data::<seq::EvCtrl>() {
-            Ok(CtrlEvent(port, e.channel, e.param, e.value))
+            Ok(Some(CtrlEvent(port, e.channel, e.param, e.value)))
         } else {
-            Ok(Event { port, ..Event::new() })
+            Ok(None)
         }
     }
 
     pub fn output_event(&self, ev: &Event) -> Result<u32, Box<dyn Error>> {
         // TODO self.out_ports bounds checking (!)
         match ev.typ {
-            EventType::NONE => Ok(0),
             EventType::NOTEON => {
                 let mut alsaev = seq::Event::new(seq::EventType::Noteon, &seq::EvNote {
                     // TODO figure out what to do with duration and off_velocity

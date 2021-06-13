@@ -36,11 +36,13 @@ impl FilterTrait for FilterChain {
                     let mut evs_this = evs.clone();
                     f.run(&mut evs_this);
                     events_out.extend(evs_this.events);
+                    evs.scene = evs_this.scene;
                 }
                 evs.events.clear();
                 evs.events.extend(events_out);
             },
         }
+        evs.events.dedup();
     }
 
     fn run_init(&self, evs: &mut EventStream) {

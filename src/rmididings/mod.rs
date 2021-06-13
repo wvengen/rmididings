@@ -55,6 +55,7 @@ impl RunArguments<'_> {
 
 pub struct RMididings<'a> {
     backend: alsa::Backend,
+    patch: &'a dyn FilterTrait,
     scenes: &'a [&'a Scene<'a>],
     control: &'a dyn FilterTrait,
     pre: &'a dyn FilterTrait,
@@ -67,6 +68,7 @@ impl<'a> RMididings<'a> {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             backend: alsa::Backend::new()?,
+            patch: &Discard(),
             scenes: &[],
             control: &Discard(),
             pre: &Discard(),
@@ -107,30 +109,27 @@ impl<'a> RMididings<'a> {
 
     pub fn run(&mut self, args: RunArguments<'a>) -> Result<(), Box<dyn Error>> {
         // Handle arguments
+        self.patch = args.patch;
+        self.scenes = args.scenes;
         self.control = args.control;
         self.pre = args.pre;
         self.post = args.post;
 
         // TODO error when both patch and scenes are given
 
-        if args.scenes.len() > 0 {
-            self.scenes = args.scenes;
-        } else {
-            // TODO
-            // fallback to creating a single scene from the patch
-            // self.scenes = &[Scene::from(args.patch)];
-            // self.initial_scene = 0;
-        }
+        self.current_scene = self.initial_scene;
 
-        self.run_patch(self.pre, Event::new())?;
-        self.run_patch(self.get_current_scene().init, Event::new())?;
-        self.run_init(self.get_current_scene().patch, Event::new())?;
+        self.run_patch(self.pre, None)?;
+        self.run_init(self.patch, None)?;
+        self.run_patch(get_scene(self.scenes, self.current_scene).init, None)?;
+        self.run_init(get_scene(self.scenes, self.current_scene).patch, None)?;
 
         loop {
             if let Some(ev) = self.backend.run()? {
-                println!("event {}", ev.to_string());
-                self.run_patch(self.control, ev.clone())?;
-                self.run_patch(self.get_current_scene().patch, ev.clone())?;
+                self.run_patch(self.control, Some(ev.clone()))?;
+                // TODO don't run patch when scene was just switched in control
+                self.run_patch(self.patch, Some(ev.clone()))?;
+                self.run_patch(get_scene(self.scenes, self.current_scene).patch, Some(ev.clone()))?;
             }
             self.backend.wait()?;
         }
@@ -139,61 +138,69 @@ impl<'a> RMididings<'a> {
     pub fn switch_scene(&mut self, scene: u8) -> Result<(), Box<dyn Error>> {
         // skip if we're already in the scene
         if self.current_scene == scene { return Ok(()); }
-
-        println!("switch_scene {}: {}", scene, self.get_scene(scene).name);
-
         // TODO scene bounds checking (!)
+
+        println!("Scene {}: {}", scene, get_scene(self.scenes, scene).name);
 
         // TODO make sure we don't run post and exit patch the first time
         //      we don't run this yet on init, but it would be nice to use
-        self.run_exit(self.get_current_scene().patch, Event::new())?;
-        self.run_patch(self.get_current_scene().exit, Event::new())?;
-        self.run_patch(self.post, Event::new())?;
+        let current_scene = get_scene(self.scenes, self.current_scene);
+        self.run_exit(current_scene.patch, None)?;
+        self.run_patch(current_scene.exit, None)?;
+        self.run_exit(self.patch, None)?;
+        self.run_patch(self.post, None)?;
 
         self.current_scene = scene;
 
-        self.run_patch(self.pre, Event::new())?;
-        self.run_patch(self.get_current_scene().init, Event::new())?;
-        self.run_init(self.get_current_scene().patch, Event::new())?;
+        let current_scene = get_scene(self.scenes, self.current_scene);
+        self.run_patch(self.pre, None)?;
+        self.run_init(self.patch, None)?;
+        self.run_patch(current_scene.init, None)?;
+        self.run_init(current_scene.patch, None)?;
 
         Ok(())
     }
 
     pub fn output_event(&self, ev: &Event) -> Result<u32, Box<dyn Error>> {
-        println!("output_event {}", ev.to_string());
         self.backend.output_event(&ev)
     }
 
     // TODO put run_patch, run_init and run_exit together
-    fn run_patch(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
+    fn run_patch(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
+        evs.scene = self.current_scene;
         patch.run(&mut evs);
-        // output resulting events
+        // handle resulting event stream
         for ev in evs.events.iter() { self.output_event(ev)?; };
+        self.switch_scene(evs.scene)?;
         Ok(())
     }
 
-    fn run_init(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
+    fn run_init(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
+        evs.scene = self.current_scene;
         patch.run_init(&mut evs);
         // output resulting events
         for ev in evs.events.iter() { self.output_event(ev)?; };
+        self.switch_scene(evs.scene)?;
         Ok(())
     }
 
-    fn run_exit(&self, patch: &'a dyn FilterTrait, ev: Event) -> Result<(), Box<dyn Error>> {
+    fn run_exit(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
+        evs.scene = self.current_scene;
         patch.run_exit(&mut evs);
         // output resulting events
         for ev in evs.events.iter() { self.output_event(ev)?; };
+        self.switch_scene(evs.scene)?;
         Ok(())
     }
+}
 
-    fn get_current_scene(&self) -> &Scene {
-        self.get_scene(self.current_scene)
-    }
-
-    fn get_scene(&self, scene: u8) -> &Scene {
-        self.scenes[scene as usize]
+fn get_scene<'a>(scenes: &'a [&Scene<'a>], index: u8) -> &'a Scene<'a> {
+    if scenes.len() > index as usize {
+        scenes[index as usize]
+    } else {
+        &Scene::DEFAULT
     }
 }
