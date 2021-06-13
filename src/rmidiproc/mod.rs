@@ -199,14 +199,14 @@ define_modifier!(
 
 // Scene switching
 
-pub struct SceneSwitch(u8);
+pub struct SceneSwitch(pub u8);
 impl FilterTrait for SceneSwitch {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() { evs.scene = self.0; }
     }
 }
 
-pub struct SceneSwitchOffset(i16);
+pub struct SceneSwitchOffset(pub i16);
 impl FilterTrait for SceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() { evs.scene = (evs.scene as i16 + self.0) as u8; }

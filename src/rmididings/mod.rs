@@ -1,4 +1,4 @@
-use std::{thread, time};
+use std::{thread, time, cmp};
 use std::error::Error;
 
 mod alsa;
@@ -12,7 +12,8 @@ pub struct ConfigArguments<'a> {
     pub client_name: &'a str,
     pub in_ports: &'a [[&'a str; 2]],
     pub out_ports: &'a [[&'a str; 2]],
-    //pub data_offset: u8,
+    pub data_offset: u8,
+    pub scene_offset: u8,
     //pub octave_offset: u8,
     pub initial_scene: u8,
     pub start_delay: f32
@@ -25,7 +26,8 @@ impl ConfigArguments<'_> {
             client_name: "RMididings",
             in_ports: &[],
             out_ports: &[],
-            //data_offset: 1,
+            data_offset: 1,
+            scene_offset: 1,
             //octave_offset: 2,
             initial_scene: 0,
             start_delay: 0.0
@@ -55,6 +57,9 @@ impl RunArguments<'_> {
 
 pub struct RMididings<'a> {
     backend: alsa::Backend,
+    port_offset: u8,
+    channel_offset: u8,
+    scene_offset: u8,
     patch: &'a dyn FilterTrait,
     scenes: &'a [&'a Scene<'a>],
     control: &'a dyn FilterTrait,
@@ -68,6 +73,9 @@ impl<'a> RMididings<'a> {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             backend: alsa::Backend::new()?,
+            port_offset: 1,
+            channel_offset: 1,
+            scene_offset: 1,
             patch: &Discard(),
             scenes: &[],
             control: &Discard(),
@@ -103,6 +111,9 @@ impl<'a> RMididings<'a> {
         }
 
         self.initial_scene = args.initial_scene;
+        self.port_offset = args.data_offset;
+        self.channel_offset = args.data_offset;
+        self.scene_offset = args.scene_offset;
 
         Ok(())
     }
@@ -125,7 +136,10 @@ impl<'a> RMididings<'a> {
         self.run_init(get_scene(self.scenes, self.current_scene).patch, None)?;
 
         loop {
-            if let Some(ev) = self.backend.run()? {
+            if let Some(mut ev) = self.backend.run()? {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_add(self.channel_offset);
+
                 self.run_patch(self.control, Some(ev.clone()))?;
                 // TODO don't run patch when scene was just switched in control
                 self.run_patch(self.patch, Some(ev.clone()))?;
@@ -136,11 +150,15 @@ impl<'a> RMididings<'a> {
     }
 
     pub fn switch_scene(&mut self, scene: u8) -> Result<(), Box<dyn Error>> {
+        self.switch_scene_internal(scene.saturating_sub(self.scene_offset))
+    }
+
+    fn switch_scene_internal(&mut self, scene: u8) -> Result<(), Box<dyn Error>> {
         // skip if we're already in the scene
         if self.current_scene == scene { return Ok(()); }
         // TODO scene bounds checking (!)
 
-        println!("Scene {}: {}", scene, get_scene(self.scenes, scene).name);
+        println!("Scene {}: {}", scene.saturating_add(self.scene_offset), get_scene(self.scenes, scene).name);
 
         // TODO make sure we don't run post and exit patch the first time
         //      we don't run this yet on init, but it would be nice to use
@@ -162,37 +180,44 @@ impl<'a> RMididings<'a> {
     }
 
     pub fn output_event(&self, ev: &Event) -> Result<u32, Box<dyn Error>> {
-        self.backend.output_event(&ev)
+        if self.channel_offset == 0 && self.port_offset == 0 {
+            self.backend.output_event(&ev)
+        } else {
+            let mut ev = ev.clone();
+            ev.port = ev.port.saturating_sub(self.port_offset as usize);
+            ev.channel = ev.channel.saturating_sub(self.channel_offset);
+            self.backend.output_event(&ev)
+        }
     }
 
     // TODO put run_patch, run_init and run_exit together
     fn run_patch(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
-        evs.scene = self.current_scene;
+        evs.scene = self.current_scene.saturating_add(self.scene_offset);
         patch.run(&mut evs);
         // handle resulting event stream
         for ev in evs.events.iter() { self.output_event(ev)?; };
-        self.switch_scene(evs.scene)?;
+        self.switch_scene_internal(evs.scene.saturating_sub(self.scene_offset))?;
         Ok(())
     }
 
     fn run_init(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
-        evs.scene = self.current_scene;
+        evs.scene = self.current_scene.saturating_add(self.scene_offset);
         patch.run_init(&mut evs);
         // output resulting events
         for ev in evs.events.iter() { self.output_event(ev)?; };
-        self.switch_scene(evs.scene)?;
+        self.switch_scene_internal(evs.scene.saturating_sub(self.scene_offset))?;
         Ok(())
     }
 
     fn run_exit(&mut self, patch: &dyn FilterTrait, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
         let mut evs = EventStream::from(ev);
-        evs.scene = self.current_scene;
+        evs.scene = self.current_scene.saturating_add(self.scene_offset);
         patch.run_exit(&mut evs);
         // output resulting events
         for ev in evs.events.iter() { self.output_event(ev)?; };
-        self.switch_scene(evs.scene)?;
+        self.switch_scene_internal(evs.scene.saturating_sub(self.scene_offset))?;
         Ok(())
     }
 }
