@@ -1,7 +1,7 @@
+#![macro_use]
 pub mod event;
 pub mod event_stream;
 pub mod filter_trait;
-#[macro_use]
 pub mod filter_chain;
 pub use event::*;
 pub use event_stream::*;

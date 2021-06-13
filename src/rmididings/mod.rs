@@ -1,4 +1,4 @@
-use std::{thread, time, cmp};
+use std::{thread, time};
 use std::error::Error;
 
 mod alsa;

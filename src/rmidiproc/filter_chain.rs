@@ -1,3 +1,4 @@
+#![macro_use]
 use event::*;
 use event_stream::*;
 use filter_trait::*;
