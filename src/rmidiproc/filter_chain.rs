@@ -92,8 +92,33 @@ macro_rules! define_filter {
     ($name:ident ( $($args:ty),* ) $item:item) => {
         pub struct $name($(pub $args),*);
 
-        impl FilterTrait for $name {
+        impl $name {
             $item
+        }
+
+        impl FilterTrait for $name {
+            fn run(&self, evs: &mut EventStream) {
+                evs.events.retain(|ev| self.filter_single(&ev));
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! define_modifier {
+    ($name:ident ( $($args:ty),* ) $item:item) => {
+        pub struct $name($(pub $args),*);
+
+        impl $name {
+            $item
+        }
+
+        impl FilterTrait for $name {
+            fn run(&self, evs: &mut EventStream) {
+                for ev in evs.events.iter_mut() {
+                    self.modify_single(ev);
+                }
+            }
         }
     }
 }
@@ -108,8 +133,8 @@ macro_rules! define_generator {
         }
 
         impl FilterTrait for $name {
-            fn modify_single(&self, ev: &mut Event) {
-                *ev = self.generate_single();
+            fn run(&self, evs: &mut EventStream) {
+                evs.events.push(self.generate_single());
             }
         }
     }

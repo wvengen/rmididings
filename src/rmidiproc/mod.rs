@@ -134,63 +134,63 @@ define_generator!(
 
 // Modifiers
 
-define_filter!(
+define_modifier!(
     Port(usize)
     fn modify_single(&self, ev:&mut  Event) {
         ev.port = self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     Channel(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.channel = self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     Transpose(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.note += self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     TransposeOctave(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.note += self.0 * 12;
     }
 );
 
-define_filter!(
+define_modifier!(
     Key(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.note = self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     Velocity(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.velocity += self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     VelocityMultiply(f32)
     fn modify_single(&self, ev: &mut Event) {
         ev.velocity = ((ev.velocity as f32) * self.0) as u8;
     }
 );
 
-define_filter!(
+define_modifier!(
     VelocityFixed(u8)
     fn modify_single(&self, ev: &mut Event) {
         ev.velocity = self.0;
     }
 );
 
-define_filter!(
+define_modifier!(
     CtrlMap(u32, u32)
     fn modify_single(&self, ev: &mut Event) {
         if ev.ctrl == self.0 { ev.ctrl = self.1 };
@@ -199,22 +199,23 @@ define_filter!(
 
 // Scene switching
 
-define_filter!(
-    SceneSwitch(u8)
+pub struct SceneSwitch(u8);
+impl FilterTrait for SceneSwitch {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() { evs.scene = self.0; }
     }
-);
+}
 
-define_filter!(
-    SceneSwitchOffset(i16)
+pub struct SceneSwitchOffset(i16);
+impl FilterTrait for SceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() { evs.scene = (evs.scene as i16 + self.0) as u8; }
     }
-);
+}
 
 pub struct Init<'a>(pub &'a dyn FilterTrait);
 impl FilterTrait for Init<'_> {
+    fn run(&self, _evs: &mut EventStream) {}
     fn run_init(&self, evs: &mut EventStream) {
         self.0.run(evs);
     }
@@ -222,6 +223,7 @@ impl FilterTrait for Init<'_> {
 
 pub struct Exit<'a>(pub &'a dyn FilterTrait);
 impl FilterTrait for Exit<'_> {
+    fn run(&self, _evs: &mut EventStream) {}
     fn run_exit(&self, evs: &mut EventStream) {
         self.0.run(evs);
     }
@@ -229,23 +231,23 @@ impl FilterTrait for Exit<'_> {
 
 // Misc
 
-define_filter!(
-    Print()
+pub struct Print();
+impl FilterTrait for Print {
     fn run(&self, evs:  &mut EventStream) -> () {
         if evs.any() { println!("{}", evs.to_string()); }
     }
-);
+}
 
-define_filter!(
-    Pass()
+pub struct Pass();
+impl FilterTrait for Pass {
     fn run(&self, _evs: &mut EventStream) -> () {
         // pass, which means: keep event stream as it iss
     }
-);
+}
 
-define_filter!(
-    Discard()
+pub struct Discard();
+impl FilterTrait for Discard {
     fn run(&self, evs: &mut EventStream) -> () {
         evs.events.clear();
     }
-);
+}
