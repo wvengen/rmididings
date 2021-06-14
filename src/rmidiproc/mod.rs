@@ -199,17 +199,55 @@ define_modifier!(
 
 // Scene switching
 
-pub struct SceneSwitch(pub u8);
+pub struct SceneSwitch(pub SceneNum);
 impl FilterTrait for SceneSwitch {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() { evs.scene = self.0; }
+        if evs.any() {
+            if evs.scene.is_some() {
+                evs.scene = Some(self.0);
+            } else {
+                // TODO warn about no scenes present
+            }
+        }
     }
 }
 
-pub struct SceneSwitchOffset(pub i16);
+pub struct SceneSwitchOffset(pub SceneNumOffset);
 impl FilterTrait for SceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() { evs.scene = (evs.scene as i16 + self.0) as u8; }
+        if evs.any() {
+            if let Some(scene) = evs.scene {
+                evs.scene = Some((scene as SceneNumOffset).saturating_add(self.0) as SceneNum);
+            } else {
+                // TODO warn about no scenes present
+            }
+        }
+    }
+}
+
+pub struct SubSceneSwitch(pub SceneNum);
+impl FilterTrait for SubSceneSwitch {
+    fn run(&self, evs: &mut EventStream) {
+        if evs.any() {
+            if evs.subscene.is_some() {
+                evs.subscene = Some(self.0);
+            } else {
+                // TODO warn no subscenes present for the current scene
+            }
+        }
+    }
+}
+
+pub struct SubSceneSwitchOffset(pub SceneNumOffset);
+impl FilterTrait for SubSceneSwitchOffset {
+    fn run(&self, evs: &mut EventStream) {
+        if evs.any() {
+            if let Some(subscene) = evs.subscene {
+                evs.subscene = Some((subscene as SceneNumOffset).saturating_add(self.0) as SceneNum);
+            } else {
+                // TODO warn no subscenes present for the current scene
+            }
+        }
     }
 }
 

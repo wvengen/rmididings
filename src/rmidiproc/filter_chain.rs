@@ -38,6 +38,7 @@ impl FilterTrait for FilterChain {
                     f.run(&mut evs_this);
                     events_out.extend(evs_this.events);
                     evs.scene = evs_this.scene;
+                    evs.subscene = evs_this.subscene;
                 }
                 evs.events.clear();
                 evs.events.extend(events_out);
