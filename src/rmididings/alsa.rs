@@ -133,7 +133,7 @@ impl Backend {
                 Ok(self.output_alsaseq_event(self.out_ports[ev.port], &mut alsaev)?)
             },
             EventType::SYSEX => {
-                let mut me = seq::MidiEvent::new(16)?; // TODO buffer size
+                let mut me = seq::MidiEvent::new(ev.sysex.len() as u32)?;
                 let (_, me_enc) = me.encode(ev.sysex)?;
                 let mut alsaev = me_enc.unwrap();
                 Ok(self.output_alsaseq_event(self.out_ports[ev.port], &mut alsaev)?)
