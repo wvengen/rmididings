@@ -289,3 +289,19 @@ impl FilterTrait for Discard {
         evs.events.clear();
     }
 }
+
+pub struct NotBox<'a>(pub Box<dyn FilterTrait + 'a>);
+impl FilterTrait for NotBox<'_> {
+    fn run(&self, evs: &mut EventStream) {
+        self.0.run_inverse(evs);
+    }
+    fn run_inverse(&self, evs: &mut EventStream) {
+        self.0.run(evs);
+    }
+}
+#[macro_export]
+macro_rules! Not {
+    ( $f:expr ) => (
+        NotBox(Box::new($f))
+    )
+}
