@@ -251,20 +251,28 @@ impl FilterTrait for SubSceneSwitchOffset {
     }
 }
 
-pub struct Init<'a>(pub &'a dyn FilterTrait);
-impl FilterTrait for Init<'_> {
+pub struct _Init<'a>(pub Box<dyn FilterTrait + 'a>);
+impl FilterTrait for _Init<'_> {
     fn run(&self, _evs: &mut EventStream) {}
     fn run_init(&self, evs: &mut EventStream) {
         self.0.run(evs);
     }
 }
+#[macro_export]
+macro_rules! Init {
+    ( $f:expr ) => ( _Init(Box::new($f)))
+}
 
-pub struct Exit<'a>(pub &'a dyn FilterTrait);
-impl FilterTrait for Exit<'_> {
+pub struct _Exit<'a>(pub Box<dyn FilterTrait + 'a>);
+impl FilterTrait for _Exit<'_> {
     fn run(&self, _evs: &mut EventStream) {}
     fn run_exit(&self, evs: &mut EventStream) {
         self.0.run(evs);
     }
+}
+#[macro_export]
+macro_rules! Exit {
+    ( $f:expr ) => ( _Exit(Box::new($f)))
 }
 
 // Misc
@@ -290,8 +298,8 @@ impl FilterTrait for Discard {
     }
 }
 
-pub struct NotBox<'a>(pub Box<dyn FilterTrait + 'a>);
-impl FilterTrait for NotBox<'_> {
+pub struct _Not<'a>(pub Box<dyn FilterTrait + 'a>);
+impl FilterTrait for _Not<'_> {
     fn run(&self, evs: &mut EventStream) {
         self.0.run_inverse(evs);
     }
@@ -301,7 +309,5 @@ impl FilterTrait for NotBox<'_> {
 }
 #[macro_export]
 macro_rules! Not {
-    ( $f:expr ) => (
-        NotBox(Box::new($f))
-    )
+    ( $f:expr ) => ( _Not(Box::new($f)))
 }

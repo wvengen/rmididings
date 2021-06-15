@@ -96,6 +96,7 @@ to switch between the scenes.
 - OSC support, with filters etc. like MIDI (this was hard to do in mididings without threading issues).
 - Improving syntax with macros.
 - Adding port connected / disconnected event types.
+- Make `SysEx` work without needing to borrow (allows returning them from a function).
 
 ## License
 
