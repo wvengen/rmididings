@@ -3,19 +3,19 @@ use event::*;
 use event_stream::*;
 use filter_trait::*;
 
-pub struct FilterChain {
-    // need to make both public because of macro use
-    filters: Vec<Box<dyn FilterTrait>>,
+pub struct FilterChain<'a> {
+    // lifetime: https://www.reddit.com/r/rust/comments/30ehed/why_must_this_reference_have_a_static_lifetime/
+    filters: Vec<Box<dyn FilterTrait + 'a>>,
     connection: ConnectionType,
 }
 
-impl FilterChain {
-    pub fn new(connection: ConnectionType, filters: Vec<Box<dyn FilterTrait>>) -> Self {
+impl<'a> FilterChain<'a> {
+    pub fn new(connection: ConnectionType, filters: Vec<Box<dyn FilterTrait + 'a>>) -> Self {
         FilterChain { connection, filters }
     }
 }
 
-impl FilterTrait for FilterChain {
+impl<'a> FilterTrait for FilterChain<'a> {
     fn run(&self, evs: &mut EventStream) {
         match self.connection {
             ConnectionType::Chain => {
@@ -31,7 +31,6 @@ impl FilterTrait for FilterChain {
                 // TODO allocate full size of events_out
                 // TODO don't clone for first/last filter (can do when running last) ...
                 // TODO ... or repeat evs filters.size times, and run on each slice.
-                // TODO remove immediate duplicates
                 let mut events_out = Vec::<Event>::new();
                 for f in self.filters.iter() {
                     let mut evs_this = evs.clone();
