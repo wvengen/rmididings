@@ -138,6 +138,7 @@ impl<'a> RMididings<'a> {
                 .map(|scene| { if scene.subscenes.is_empty() { None } else { Some(0) } })
                 .collect();
             self.current_subscene_num = *self.get_stored_subscene_num();
+            self.print_current_scene();
         }
 
         self.run_current_scene_init()?;
