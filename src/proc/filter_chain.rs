@@ -11,7 +11,7 @@ pub struct FilterChain<'a> {
 
 impl<'a> FilterChain<'a> {
     pub fn new(connection: ConnectionType, filters: Vec<Box<dyn FilterTrait + 'a>>) -> Self {
-        FilterChain { filters, connection }
+        FilterChain { filters, connection, }
     }
 
     fn run_chain(&self, evs: &mut EventStream, method: &dyn Fn(&Box<dyn FilterTrait + 'a>, &mut EventStream)) {
@@ -43,35 +43,42 @@ impl<'a> FilterChain<'a> {
     }
 }
 
-fn run_single<'a>(f: &Box<dyn FilterTrait + 'a>, evs: &mut EventStream) { f.run(evs) }
-fn run_inverse_single<'a>(f: &Box<dyn FilterTrait + 'a>, evs: &mut EventStream) { f.run_inverse(evs) }
+fn run_single<'a>(f: &Box<dyn FilterTrait + 'a>, evs: &mut EventStream) {
+    f.run(evs)
+}
+fn run_inverse_single<'a>(f: &Box<dyn FilterTrait + 'a>, evs: &mut EventStream) {
+    f.run_inverse(evs)
+}
 
 impl<'a> FilterTrait for FilterChain<'a> {
     fn run(&self, evs: &mut EventStream) {
         match self.connection {
-            ConnectionType::Chain => { self.run_chain(evs, &run_single) },
-            ConnectionType::Fork => { self.run_fork(evs, &run_single) },
+            ConnectionType::Chain => self.run_chain(evs, &run_single),
+            ConnectionType::Fork => self.run_fork(evs, &run_single),
         }
     }
 
     fn run_inverse(&self, evs: &mut EventStream) {
         match self.connection {
-            ConnectionType::Chain => { self.run_fork(evs, &run_inverse_single) },
-            ConnectionType::Fork => { self.run_chain(evs, &run_inverse_single) },
+            ConnectionType::Chain => self.run_fork(evs, &run_inverse_single),
+            ConnectionType::Fork => self.run_chain(evs, &run_inverse_single),
         }
     }
 
     fn run_init(&self, evs: &mut EventStream) {
-        for f in self.filters.iter() { f.run_init(evs); }
+        for f in self.filters.iter() {
+            f.run_init(evs);
+        }
     }
 
     fn run_exit(&self, evs: &mut EventStream) {
-        for f in self.filters.iter() { f.run_exit(evs); }
+        for f in self.filters.iter() {
+            f.run_exit(evs);
+        }
     }
 }
 
-
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ConnectionType {
     Chain,
     Fork,

@@ -20,7 +20,6 @@ impl Backend {
             alsaseq: alsa::Seq::open(None, None, true)?,
             in_ports: Vec::<i32>::new(),
             out_ports: Vec::<i32>::new(),
-
         })
     }
 

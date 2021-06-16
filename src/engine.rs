@@ -1,5 +1,5 @@
-use std::{thread, time};
 use std::error::Error;
+use std::{thread, time};
 
 use super::proc::*;
 use super::scene::*;
@@ -15,7 +15,7 @@ pub struct ConfigArguments<'a> {
     pub scene_offset: SceneNum,
     //pub octave_offset: u8,
     pub initial_scene: SceneNum,
-    pub start_delay: f32
+    pub start_delay: f32,
 }
 
 impl ConfigArguments<'_> {
@@ -29,7 +29,7 @@ impl ConfigArguments<'_> {
             scene_offset: 1,
             //octave_offset: 2,
             initial_scene: 0,
-            start_delay: 0.0
+            start_delay: 0.0,
         }
     }
 }
@@ -135,7 +135,7 @@ impl<'a> RMididings<'a> {
             self.current_scene_num = Some(self.initial_scene_num);
 
             self.stored_subscene_nums = args.scenes.iter()
-                .map(|scene| if scene.subscenes.is_empty() { None } else { Some(0) })
+                .map(|scene| { if scene.subscenes.is_empty() { None } else { Some(0) } })
                 .collect();
             self.current_subscene_num = *self.get_stored_subscene_num();
         }
@@ -200,7 +200,6 @@ impl<'a> RMididings<'a> {
 
             self.run_current_subscene_init()?;
         }
-
         Ok(())
     }
 
@@ -289,11 +288,16 @@ impl<'a> RMididings<'a> {
         }
 
         // handle resulting event stream
-        for ev in evs.events.iter() { self.output_event(ev)?; };
+        for ev in evs.events.iter() {
+            self.output_event(ev)?;
+        }
 
         if let Some(scene) = evs.scene {
             if let Some(subscene) = evs.subscene {
-                self.switch_scene_internal(scene.saturating_sub(self.scene_offset), Some(subscene.saturating_sub(self.scene_offset)))?;
+                self.switch_scene_internal(
+                    scene.saturating_sub(self.scene_offset),
+                    Some(subscene.saturating_sub(self.scene_offset)),
+                )?;
             } else {
                 self.switch_scene_internal(scene.saturating_sub(self.scene_offset), None)?;
             }
@@ -307,19 +311,24 @@ impl<'a> RMididings<'a> {
         if let Some(current_scene_num) = self.current_scene_num {
             if let Some(current_scene) = get_scene(self.scenes, self.current_scene_num) {
                 if let Some(current_subscene_num) = self.current_subscene_num {
-                    if let Some(current_subscene) = current_scene.get_subscene(current_subscene_num) {
-                        println!("Scene {}.{}: {} - {}",
+                    if let Some(current_subscene) = current_scene.get_subscene(current_subscene_num)
+                    {
+                        println!(
+                            "Scene {}.{}: {} - {}",
                             current_scene_num.saturating_add(self.scene_offset),
                             current_subscene_num.saturating_add(self.scene_offset),
                             current_scene.name,
-                            current_subscene.name);
+                            current_subscene.name
+                        );
                         return;
                     }
                 }
 
-                println!("Scene {}: {}",
+                println!(
+                    "Scene {}: {}",
                     current_scene_num.saturating_add(self.scene_offset),
-                    current_scene.name);
+                    current_scene.name
+                );
             }
         }
     }
@@ -334,7 +343,11 @@ impl<'a> RMididings<'a> {
     }
 }
 
-enum SceneRunType { Patch, Init, Exit }
+enum SceneRunType {
+    Patch,
+    Init,
+    Exit,
+}
 
 fn get_scene<'a>(scenes: &'a [&Scene<'a>], scene_num_opt: Option<SceneNum>) -> Option<&'a Scene<'a>> {
     if let Some(scene_num) = scene_num_opt {

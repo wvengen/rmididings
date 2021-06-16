@@ -1,4 +1,4 @@
-use super::proc::{FilterTrait,Discard,SceneNum};
+use super::proc::{Discard, FilterTrait, SceneNum};
 
 pub struct Scene<'a> {
     pub name: &'a str,
@@ -9,7 +9,13 @@ pub struct Scene<'a> {
 }
 
 impl Scene<'_> {
-    pub const DEFAULT: Self = Scene { name: "", patch: &Discard(), init: &Discard(), exit: &Discard(), subscenes: &[] };
+    pub const DEFAULT: Self = Scene {
+        name: "",
+        patch: &Discard(),
+        init: &Discard(),
+        exit: &Discard(),
+        subscenes: &[],
+    };
 
     pub fn default() -> Self {
         // TODO automatic naming (e.g. using a Cell)
@@ -35,6 +41,12 @@ impl Scene<'_> {
 
 impl<'a> From<&'a dyn FilterTrait> for Scene<'a> {
     fn from(ft: &'a dyn FilterTrait) -> Scene<'a> {
-        Scene { name: "Single patch", patch: ft, init: &Discard(), exit: &Discard(), subscenes: &[] }
+        Scene {
+            name: "Single patch",
+            patch: ft,
+            init: &Discard(),
+            exit: &Discard(),
+            subscenes: &[],
+        }
     }
 }

@@ -1,4 +1,4 @@
-use super::event_stream::*;
+use super::event_stream::EventStream;
 
 // All filters implement this trait.
 pub trait FilterTrait {
@@ -7,10 +7,12 @@ pub trait FilterTrait {
 
     // Only used for filters, where it is run when the filter is inside Not().
     // Override this if you make a filter that doesn't use define_filter!.
-    fn run_inverse(&self, evs: &mut EventStream) { self.run(evs); }
+    fn run_inverse(&self, evs: &mut EventStream) {
+        self.run(evs);
+    }
 
     // Only used for Init filter
-    fn run_init(&self, _evs: &mut EventStream) { }
+    fn run_init(&self, _evs: &mut EventStream) {}
     // Only used for Exit filter
-    fn run_exit(&self, _evs: &mut EventStream) { }
+    fn run_exit(&self, _evs: &mut EventStream) {}
 }

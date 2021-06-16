@@ -1,12 +1,12 @@
 #![macro_use]
 pub mod event;
 pub mod event_stream;
-pub mod filter_trait;
 pub mod filter_chain;
+pub mod filter_trait;
 pub use self::event::*;
 pub use self::event_stream::*;
-pub use self::filter_trait::*;
 pub use self::filter_chain::*;
+pub use self::filter_trait::*;
 
 // Filters
 
@@ -242,7 +242,8 @@ impl FilterTrait for SubSceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() {
             if let Some(subscene) = evs.subscene {
-                evs.subscene = Some((subscene as SceneNumOffset).saturating_add(self.0) as SceneNum);
+                evs.subscene =
+                    Some((subscene as SceneNumOffset).saturating_add(self.0) as SceneNum);
             } else {
                 // TODO warn no subscenes present for the current scene
             }
@@ -261,7 +262,9 @@ impl FilterTrait for _Init<'_> {
 }
 #[macro_export]
 macro_rules! Init {
-    ( $f:expr ) => ( _Init(Box::new($f)))
+    ( $f:expr ) => {
+        _Init(Box::new($f))
+    };
 }
 
 #[doc(hidden)]
@@ -275,15 +278,19 @@ impl FilterTrait for _Exit<'_> {
 }
 #[macro_export]
 macro_rules! Exit {
-    ( $f:expr ) => ( _Exit(Box::new($f)))
+    ( $f:expr ) => {
+        _Exit(Box::new($f))
+    };
 }
 
 // Misc
 
 pub struct Print();
 impl FilterTrait for Print {
-    fn run(&self, evs:  &mut EventStream) {
-        if evs.any() { println!("{}", evs.to_string()); }
+    fn run(&self, evs: &mut EventStream) {
+        if evs.any() {
+            println!("{}", evs.to_string());
+        }
     }
 }
 
@@ -385,5 +392,7 @@ impl FilterTrait for _Not<'_> {
 /// ```
 #[macro_export]
 macro_rules! Not {
-    ( $f:expr ) => ( _Not(Box::new($f)))
+    ( $f:expr ) => {
+        _Not(Box::new($f))
+    };
 }

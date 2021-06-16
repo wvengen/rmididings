@@ -4,7 +4,7 @@ use std::fmt;
 /// MIDI Event
 ///
 /// Please use one of [`Event::new()`], [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
-#[derive(Debug,Copy,Clone,PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Event {
     pub typ: EventType,
     pub port: usize,
@@ -16,11 +16,10 @@ pub struct Event {
     pub ctrl: u32,
     pub value: i32,
     pub program: u8,
-    pub sysex: &'static [u8] // TODO better lifetime specifier
+    pub sysex: &'static [u8], // TODO better lifetime specifier
 }
 
 impl Event {
-
     /// Returns an empty event with a specific type.
     ///
     /// If possible, please use one of: [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
@@ -40,22 +39,34 @@ impl Event {
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self.typ {
-            EventType::NOTEON => format!("port={} channel={}, note={} velocity={}", self.port, self.channel, self.note, self.velocity),
-            EventType::NOTEOFF => format!("port={} channel={} note={}", self.port, self.channel, self.note),
-            EventType::CTRL => format!("port={} channel={}, ctrl={} value={}", self.port, self.channel, self.ctrl, self.value),
-            EventType::SYSEX => format!("port={} sysex={:?}", self.port, self.sysex),
+            EventType::NOTEON => format!(
+                "port={} channel={}, note={} velocity={}",
+                self.port, self.channel, self.note, self.velocity
+            ),
+            EventType::NOTEOFF => format!(
+                "port={} channel={} note={}",
+                self.port, self.channel, self.note
+            ),
+            EventType::CTRL => format!(
+                "port={} channel={}, ctrl={} value={}",
+                self.port, self.channel, self.ctrl, self.value
+            ),
+            EventType::SYSEX => format!(
+                "port={} sysex={:?}",
+                self.port, self.sysex
+            ),
         };
         write!(f, "Event type={} {}", self.typ.to_string(), s)
     }
 }
 
 // MIDI Event type
-#[derive(Debug,Copy,Clone,PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum EventType {
     NOTEON,
     NOTEOFF,
     CTRL,
-    SYSEX
+    SYSEX,
     // TODO finish - see http://dsacre.github.io/mididings/doc/misc.html
     // TODO handle event type filters (combination of several types)
 }
@@ -87,7 +98,13 @@ impl fmt::Display for EventType {
 /// assert_eq!(ev.velocity, 40);
 /// ```
 pub fn NoteOnEvent(port: usize, channel: u8, note: u8, velocity: u8) -> Event {
-    Event { port, channel, note, velocity, ..Event::new(EventType::NOTEON) }
+    Event {
+        port,
+        channel,
+        note,
+        velocity,
+        ..Event::new(EventType::NOTEON)
+    }
 }
 
 /// MIDI note off event
@@ -104,7 +121,12 @@ pub fn NoteOnEvent(port: usize, channel: u8, note: u8, velocity: u8) -> Event {
 /// assert_eq!(ev.note, 60);
 /// ```
 pub fn NoteOffEvent(port: usize, channel: u8, note: u8) -> Event {
-    Event { port, channel, note, ..Event::new(EventType::NOTEOFF) }
+    Event {
+        port,
+        channel,
+        note,
+        ..Event::new(EventType::NOTEOFF)
+    }
 }
 
 /// MIDI controller event
@@ -122,7 +144,13 @@ pub fn NoteOffEvent(port: usize, channel: u8, note: u8) -> Event {
 /// assert_eq!(ev.value, 80);
 /// ```
 pub fn CtrlEvent(port: usize, channel: u8, ctrl: u32, value: i32) -> Event {
-    Event { port, channel, ctrl, value, ..Event::new(EventType::CTRL) }
+    Event {
+        port,
+        channel,
+        ctrl,
+        value,
+        ..Event::new(EventType::CTRL)
+    }
 }
 
 /// MIDI system exclusive event
@@ -138,5 +166,9 @@ pub fn CtrlEvent(port: usize, channel: u8, ctrl: u32, value: i32) -> Event {
 /// assert_eq!(ev.sysex.to_vec(), vec![0xf7, 0xf0]);
 /// ```
 pub fn SysExEvent(port: usize, sysex: &'static [u8]) -> Event {
-    Event { port, sysex, ..Event::new(EventType::SYSEX) }
+    Event {
+        port,
+        sysex,
+        ..Event::new(EventType::SYSEX)
+    }
 }
