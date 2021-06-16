@@ -6,6 +6,7 @@
 //! It is very early in development, take care.
 //!
 //! [mididings]: http://das.nasophon.de/mididings/
+#![macro_use]
 
 pub mod proc;
 pub use proc::*;

@@ -1,5 +1,9 @@
+#![allow(non_snake_case)]
 use std::fmt;
 
+/// MIDI Event
+///
+/// Please use one of [`Event::new()`], [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
 #[derive(Debug,Copy,Clone,PartialEq)]
 pub struct Event {
     pub typ: EventType,
@@ -16,6 +20,18 @@ pub struct Event {
 }
 
 impl Event {
+
+    /// Returns an empty event with a specific type.
+    ///
+    /// If possible, please use one of: [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use rmididings::proc::event::*;
+    /// let ev = Event::new(EventType::NOTEON);
+    /// assert_eq!(ev.typ, EventType::NOTEON);
+    /// ```
     pub fn new(typ: EventType) -> Event {
         Event { typ: typ, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
     }
@@ -33,6 +49,7 @@ impl fmt::Display for Event {
     }
 }
 
+// MIDI Event type
 #[derive(Debug,Copy,Clone,PartialEq)]
 #[allow(non_snake_case)]
 pub enum EventType {
@@ -56,36 +73,71 @@ impl fmt::Display for EventType {
     }
 }
 
-#[derive(PartialEq)]
-#[allow(non_snake_case, dead_code)]
-pub enum EventAttribute {
-    PORT,
-    CHANNEL,
-    DATA1,
-    DATA2,
-    NOTE,
-    VELOCITY,
-    CTRL,
-    VALUE,
-    PROGRAM
-}
-
-#[allow(non_snake_case)]
+/// MIDI note on event
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::event::*;
+/// let ev = NoteOnEvent(1, 2, 60, 40);
+///
+/// assert_eq!(ev.typ, EventType::NOTEON);
+/// assert_eq!(ev.port, 1);
+/// assert_eq!(ev.channel, 2);
+/// assert_eq!(ev.note, 60);
+/// assert_eq!(ev.velocity, 40);
+/// ```
 pub fn NoteOnEvent(port: usize, channel: u8, note: u8, velocity: u8) -> Event {
     Event { port, channel, note, velocity, ..Event::new(EventType::NOTEON) }
 }
 
-#[allow(non_snake_case)]
+/// MIDI note off event
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::event::*;
+/// let ev = NoteOffEvent(1, 2, 60);
+///
+/// assert_eq!(ev.typ, EventType::NOTEOFF);
+/// assert_eq!(ev.port, 1);
+/// assert_eq!(ev.channel, 2);
+/// assert_eq!(ev.note, 60);
+/// ```
 pub fn NoteOffEvent(port: usize, channel: u8, note: u8) -> Event {
     Event { port, channel, note, ..Event::new(EventType::NOTEOFF) }
 }
 
-#[allow(non_snake_case)]
+/// MIDI controller event
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::event::*;
+/// let ev = CtrlEvent(1, 2, 7, 80);
+///
+/// assert_eq!(ev.typ, EventType::CTRL);
+/// assert_eq!(ev.port, 1);
+/// assert_eq!(ev.channel, 2);
+/// assert_eq!(ev.ctrl, 7);
+/// assert_eq!(ev.value, 80);
+/// ```
 pub fn CtrlEvent(port: usize, channel: u8, ctrl: u32, value: i32) -> Event {
     Event { port, channel, ctrl, value, ..Event::new(EventType::CTRL) }
 }
 
-#[allow(non_snake_case)]
+/// MIDI system exclusive event
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::event::*;
+/// let ev = SysExEvent(1, &[0xf7, 0xf0]);
+///
+/// assert_eq!(ev.typ, EventType::SYSEX);
+/// assert_eq!(ev.port, 1);
+/// assert_eq!(ev.sysex.to_vec(), vec![0xf7, 0xf0]);
+/// ```
 pub fn SysExEvent(port: usize, sysex: &'static [u8]) -> Event {
     Event { port, sysex, ..Event::new(EventType::SYSEX) }
 }

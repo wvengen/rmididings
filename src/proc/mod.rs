@@ -250,7 +250,9 @@ impl FilterTrait for SubSceneSwitchOffset {
     }
 }
 
+#[doc(hidden)]
 pub struct _Init<'a>(pub Box<dyn FilterTrait + 'a>);
+#[doc(hidden)]
 impl FilterTrait for _Init<'_> {
     fn run(&self, _evs: &mut EventStream) {}
     fn run_init(&self, evs: &mut EventStream) {
@@ -262,7 +264,9 @@ macro_rules! Init {
     ( $f:expr ) => ( _Init(Box::new($f)))
 }
 
+#[doc(hidden)]
 pub struct _Exit<'a>(pub Box<dyn FilterTrait + 'a>);
+#[doc(hidden)]
 impl FilterTrait for _Exit<'_> {
     fn run(&self, _evs: &mut EventStream) {}
     fn run_exit(&self, evs: &mut EventStream) {
@@ -283,6 +287,19 @@ impl FilterTrait for Print {
     }
 }
 
+/// Pass all events, i.e. a no-op.
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let f = Pass();
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f.run(&mut evs);
+///
+/// assert_eq!(evs.events.len(), 1);
+/// ```
 pub struct Pass();
 impl FilterTrait for Pass {
     fn run(&self, _evs: &mut EventStream) -> () {
@@ -290,6 +307,19 @@ impl FilterTrait for Pass {
     }
 }
 
+/// Discards all events.
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let f = Discard();
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f.run(&mut evs);
+///
+/// assert!(evs.events.is_empty());
+/// ```
 pub struct Discard();
 impl FilterTrait for Discard {
     fn run(&self, evs: &mut EventStream) -> () {
@@ -297,7 +327,9 @@ impl FilterTrait for Discard {
     }
 }
 
+#[doc(hidden)]
 pub struct _Not<'a>(pub Box<dyn FilterTrait + 'a>);
+#[doc(hidden)]
 impl FilterTrait for _Not<'_> {
     fn run(&self, evs: &mut EventStream) {
         self.0.run_inverse(evs);
@@ -306,6 +338,51 @@ impl FilterTrait for _Not<'_> {
         self.0.run(evs);
     }
 }
+
+/// Inverses the effect of filters.
+///
+/// The `Not!()` macro accepts a single argument, which is another [FilterTrait].
+/// The behavior of modifiers and generators is unchanged.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = Not!(KeyFilter(60));
+///
+/// let event1 = NoteOnEvent(0,0,60,20);
+/// let event2 = NoteOnEvent(0,0,61,20);
+///
+/// let mut evs = EventStream::from(&vec![event1, event2]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs.events.len(), 1);
+/// assert_eq!(evs.events[0], event2);
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let f1 = KeyFilter(60);
+/// let f2 = Not!(KeyFilter(60));
+/// let f3 = Not!(Not!(KeyFilter(60)));
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f1.run(&mut evs);
+/// assert!(!evs.events.is_empty());
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f2.run(&mut evs);
+/// assert!(evs.events.is_empty());
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f3.run(&mut evs);
+/// assert!(!evs.events.is_empty());
+/// # }
+/// ```
 #[macro_export]
 macro_rules! Not {
     ( $f:expr ) => ( _Not(Box::new($f)))

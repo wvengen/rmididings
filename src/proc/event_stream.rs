@@ -37,6 +37,12 @@ impl From<Option<Event>> for EventStream {
     }
 }
 
+impl From<&Vec::<Event>> for EventStream {
+    fn from(vec: &Vec<Event>) -> Self {
+        Self { events: vec.clone(), scene: None, subscene: None }
+    }
+}
+
 impl fmt::Display for EventStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // TODO add subscene
