@@ -282,7 +282,7 @@ macro_rules! Exit {
 
 pub struct Print();
 impl FilterTrait for Print {
-    fn run(&self, evs:  &mut EventStream) -> () {
+    fn run(&self, evs:  &mut EventStream) {
         if evs.any() { println!("{}", evs.to_string()); }
     }
 }
@@ -302,7 +302,7 @@ impl FilterTrait for Print {
 /// ```
 pub struct Pass();
 impl FilterTrait for Pass {
-    fn run(&self, _evs: &mut EventStream) -> () {
+    fn run(&self, _evs: &mut EventStream) {
         // pass, which means: keep event stream as it iss
     }
 }
@@ -322,7 +322,7 @@ impl FilterTrait for Pass {
 /// ```
 pub struct Discard();
 impl FilterTrait for Discard {
-    fn run(&self, evs: &mut EventStream) -> () {
+    fn run(&self, evs: &mut EventStream) {
         evs.events.clear();
     }
 }

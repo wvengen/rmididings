@@ -54,9 +54,9 @@ impl Backend {
             subs.set_sender(seq::Addr { client: port.get_client(), port: port.get_port() });
             subs.set_dest(seq::Addr { client: self.alsaseq.client_id()?, port: in_port });
             self.alsaseq.subscribe_port(&subs)?;
-            return Ok(true);
+            Ok(true)
         } else {
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -66,9 +66,9 @@ impl Backend {
             subs.set_sender(seq::Addr { client: self.alsaseq.client_id()?, port: out_port });
             subs.set_dest(seq::Addr { client: port.get_client(), port: port.get_port() });
             self.alsaseq.subscribe_port(&subs)?;
-            return Ok(true);
+            Ok(true)
         } else {
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -153,7 +153,7 @@ impl Backend {
                 return Ok(Some(port));
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn output_alsaseq_event(&self, port: i32, ev: &mut alsa::seq::Event) -> Result<u32, Box<dyn Error>> {

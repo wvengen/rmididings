@@ -33,7 +33,7 @@ impl Event {
     /// assert_eq!(ev.typ, EventType::NOTEON);
     /// ```
     pub fn new(typ: EventType) -> Event {
-        Event { typ: typ, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
+        Event { typ, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
     }
 }
 
@@ -51,7 +51,6 @@ impl fmt::Display for Event {
 
 // MIDI Event type
 #[derive(Debug,Copy,Clone,PartialEq)]
-#[allow(non_snake_case)]
 pub enum EventType {
     NOTEON,
     NOTEOFF,

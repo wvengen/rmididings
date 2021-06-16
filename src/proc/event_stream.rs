@@ -17,7 +17,7 @@ impl EventStream {
     }
 
     pub fn any(&self) -> bool {
-        self.events.len() > 0
+        !self.events.is_empty()
     }
 }
 

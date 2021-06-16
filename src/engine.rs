@@ -94,7 +94,7 @@ impl<'a> RMididings<'a> {
 
         for port in args.in_ports {
             let alsaport = self.backend.create_in_port(&*port[0])?;
-            if &*port[1] != "" {
+            if !port[1].is_empty() {
                 if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
                     self.backend.connect_in_port(client_name, port_name, alsaport)?;
                 }
@@ -102,7 +102,7 @@ impl<'a> RMididings<'a> {
         }
         for port in args.out_ports {
             let alsaport = self.backend.create_out_port(&*port[0])?;
-            if &*port[1] != "" {
+            if !port[1].is_empty() {
                 if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
                     self.backend.connect_out_port(alsaport, client_name, port_name)?;
                 }
@@ -131,13 +131,13 @@ impl<'a> RMididings<'a> {
 
         // TODO error when both patch and scenes are given
 
-        if args.scenes.len() > 0 {
+        if !args.scenes.is_empty() {
             self.current_scene_num = Some(self.initial_scene_num);
 
             self.stored_subscene_nums = args.scenes.iter()
-                .map(|scene| if scene.subscenes.len() > 0 { Some(0) } else { None })
+                .map(|scene| if scene.subscenes.is_empty() { None } else { Some(0) })
                 .collect();
-            self.current_subscene_num = self.get_stored_subscene_num().clone();
+            self.current_subscene_num = *self.get_stored_subscene_num();
         }
 
         self.run_current_scene_init()?;
@@ -174,7 +174,7 @@ impl<'a> RMididings<'a> {
 
         self.current_scene_num = Some(new_scene_num);
         self.current_subscene_num = new_subscene_num_opt.map_or(
-            self.get_stored_subscene_num().clone(),
+            *self.get_stored_subscene_num(),
             |_| new_subscene_num_opt
         );
         self.print_current_scene();
@@ -225,15 +225,15 @@ impl<'a> RMididings<'a> {
     }
 
     fn run_current_patches(&mut self, ev: &Event) -> Result<(), Box<dyn Error>> {
-        self.run_patch(self.control, SceneRunType::Patch, Some(ev.clone()))?;
+        self.run_patch(self.control, SceneRunType::Patch, Some(*ev))?;
         // TODO don't run patch when scene was just switched in control
         //      maybe do scene switching at the end of the full patch?
         //      in that case we'll need current_scene and new_scene in EventStream
-        self.run_patch(self.patch, SceneRunType::Patch, Some(ev.clone()))?;
+        self.run_patch(self.patch, SceneRunType::Patch, Some(*ev))?;
         if let Some(current_scene) = get_scene(&self.scenes, self.current_scene_num) {
-            self.run_patch(current_scene.patch, SceneRunType::Patch, Some(ev.clone()))?;
+            self.run_patch(current_scene.patch, SceneRunType::Patch, Some(*ev))?;
             if let Some(current_subscene) = current_scene.get_subscene_opt(self.current_subscene_num) {
-                self.run_patch(current_subscene.patch, SceneRunType::Patch, Some(ev.clone()))?;
+                self.run_patch(current_subscene.patch, SceneRunType::Patch, Some(*ev))?;
             }
         }
         Ok(())
@@ -263,7 +263,7 @@ impl<'a> RMididings<'a> {
         if self.channel_offset == 0 && self.port_offset == 0 {
             self.backend.output_event(&ev)
         } else {
-            let mut ev = ev.clone();
+            let mut ev = *ev;
             ev.port = ev.port.saturating_sub(self.port_offset as usize);
             ev.channel = ev.channel.saturating_sub(self.channel_offset);
             self.backend.output_event(&ev)
@@ -330,7 +330,7 @@ impl<'a> RMididings<'a> {
                 return stored_subscene_num;
             }
         }
-        return &None;
+        &None
     }
 }
 
@@ -342,5 +342,5 @@ fn get_scene<'a>(scenes: &'a [&Scene<'a>], scene_num_opt: Option<SceneNum>) -> O
             return Some(&scenes[scene_num as usize]);
         }
     }
-    return None;
+    None
 }

@@ -11,7 +11,7 @@ pub struct FilterChain<'a> {
 
 impl<'a> FilterChain<'a> {
     pub fn new(connection: ConnectionType, filters: Vec<Box<dyn FilterTrait + 'a>>) -> Self {
-        FilterChain { connection, filters }
+        FilterChain { filters, connection }
     }
 
     fn run_chain(&self, evs: &mut EventStream, method: &dyn Fn(&Box<dyn FilterTrait + 'a>, &mut EventStream)) {
