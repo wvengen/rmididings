@@ -3,6 +3,9 @@ use super::event::*;
 use super::event_stream::*;
 use super::filter_trait::*;
 
+/// Collections of filters that are run either in sequence or in parallel.
+///
+/// See the [Chain!] and [Fork!] macros.
 pub struct FilterChain<'a> {
     // lifetime: https://www.reddit.com/r/rust/comments/30ehed/why_must_this_reference_have_a_static_lifetime/
     filters: Vec<Box<dyn FilterTrait + 'a>>,
@@ -20,7 +23,7 @@ impl<'a> FilterChain<'a> {
         for f in self.filters.iter() {
             method(&f, evs);
         }
-        evs.events.dedup();
+        evs.dedup();
     }
 
     fn run_fork(&self, evs: &mut EventStream, method: &dyn Fn(&Box<dyn FilterTrait + 'a>, &mut EventStream)) {
@@ -39,7 +42,7 @@ impl<'a> FilterChain<'a> {
         }
         evs.events.clear();
         evs.events.extend(events_out);
-        evs.events.dedup();
+        evs.dedup();
     }
 }
 
@@ -86,6 +89,32 @@ pub enum ConnectionType {
 
 // Connecting filters
 
+/// Adds multiple filters in a chain.
+///
+/// This means that each filter is run in sequence. When filtering,
+/// this means each event needs to be let through by each of the filters.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let chain = Chain!(ChannelFilter(1), KeyFilter(60));
+///
+/// let ev1 = NoteOnEvent(0,0,60,20);
+/// let ev2 = NoteOnEvent(0,0,61,20);
+/// let ev3 = NoteOnEvent(0,1,60,20);
+/// let ev4 = NoteOnEvent(0,1,61,20);
+///
+/// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+/// chain.run(&mut evs);
+///
+/// assert_eq!(evs.events.to_vec(), vec![ev3]);
+/// # }
+/// ```
+///
+/// TODO test inverse
 #[macro_export]
 macro_rules! Chain {
     ( $($f:expr),+ ) => (
@@ -96,6 +125,32 @@ macro_rules! Chain {
     )
 }
 
+/// Adds multiple filters in parallel.
+///
+/// Each event is passed to each of the filters, they are run in parallel.
+/// At the end of the filter chain, duplicate events are filtered out.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let chain = Fork!(ChannelFilter(1), KeyFilter(60));
+///
+/// let ev1 = NoteOnEvent(0,0,60,20);
+/// let ev2 = NoteOnEvent(0,0,61,20);
+/// let ev3 = NoteOnEvent(0,1,60,20);
+/// let ev4 = NoteOnEvent(0,1,61,20);
+///
+/// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+/// chain.run(&mut evs);
+///
+/// assert_eq!(evs.events.to_vec(), vec![ev3, ev4, ev1]);
+/// # }
+/// ```
+///
+/// TODO test inverse
 #[macro_export]
 macro_rules! Fork {
     ( $($f:expr),+ ) => (
@@ -108,7 +163,8 @@ macro_rules! Fork {
 
 #[macro_export]
 macro_rules! define_filter {
-    ($name:ident ( $($args:ty),* ) $item:item) => {
+    ($(#[$meta:meta])* $name:ident ( $($args:ty),* ) $item:item) => {
+        $(#[$meta])*
         pub struct $name($(pub $args),*);
 
         impl $name {
@@ -129,7 +185,8 @@ macro_rules! define_filter {
 
 #[macro_export]
 macro_rules! define_modifier {
-    ($name:ident ( $($args:ty),* ) $item:item) => {
+    ($(#[$meta:meta])* $name:ident ( $($args:ty),* ) $item:item) => {
+        $(#[$meta])*
         pub struct $name($(pub $args),*);
 
         impl $name {
@@ -148,7 +205,8 @@ macro_rules! define_modifier {
 
 #[macro_export]
 macro_rules! define_generator {
-    ($name:ident ( $($args:ty),* ) $item:item) => {
+    ($(#[$meta:meta])* $name:ident ( $($args:ty),* ) $item:item) => {
+        $(#[$meta])*
         pub struct $name($(pub $args),*);
 
         impl $name {

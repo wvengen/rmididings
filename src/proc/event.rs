@@ -4,7 +4,7 @@ use std::fmt;
 /// MIDI Event
 ///
 /// Please use one of [`Event::new()`], [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Event {
     pub typ: EventType,
     pub port: usize,
@@ -61,7 +61,7 @@ impl fmt::Display for Event {
 }
 
 // MIDI Event type
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 pub enum EventType {
     NOTEON,
     NOTEOFF,

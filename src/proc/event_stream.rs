@@ -1,5 +1,6 @@
 use super::event::*;
 use std::fmt;
+use std::collections::HashSet;
 
 pub type SceneNum = u8;
 pub type SceneNumOffset = i16;
@@ -22,6 +23,13 @@ impl EventStream {
 
     pub fn any(&self) -> bool {
         !self.events.is_empty()
+    }
+
+    /// Dedups events.
+    pub fn dedup(&mut self) {
+        // https://stackoverflow.com/a/47648303
+        let mut uniques = HashSet::new();
+        self.events.retain(|e| uniques.insert(*e));
     }
 }
 
