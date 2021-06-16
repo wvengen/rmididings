@@ -1,6 +1,6 @@
 [package]
 name = "rmididings"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["wvengen"]
 
 description = "Write your own MIDI router/processor, inspired by mididings."
