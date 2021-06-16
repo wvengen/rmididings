@@ -22,6 +22,9 @@ are supported. We'll see.
 You'll need [Rust](https://www.rust-lang.org/) 1.52.0+ with [Cargo](https://doc.rust-lang.org/cargo/).
 The easiest option to get a recent enough Rust is using [Rustup](https://rustup.rs/).
 
+You also need the ALSA headers. On Debian you would need to run `apt-get install libasound2-dev`,
+on Fedora `dnf install alsa-lib-devel`.
+
 Rmididings is a crate, which means that you write your own program that uses it. Let's start with a
 simple example. Create a project directory, and a subdirectory `src`, where you put the following file
 as `main.rs`:
