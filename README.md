@@ -128,4 +128,4 @@ to switch between the scenes.
 
 ## License
 
-[GPLv3](LICENSE.md) or later.
+[GPL-3.0 or later](LICENSE.md) or later.
