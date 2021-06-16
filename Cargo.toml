@@ -3,5 +3,13 @@ name = "rmididings"
 version = "0.1.0"
 authors = ["wvengen"]
 
+description = "Write your own MIDI router/processor, inspired by mididings."
+repository = "https://github.com/wvengen/rmididings"
+keywords = ["MIDI", "ALSA", "music"]
+license = "GPL-3.0+"
+categories = ["multimedia::audio"]
+readme = "README.md"
+edition = "2018"
+
 [dependencies]
 alsa = "^0.5.0"

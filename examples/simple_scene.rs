@@ -2,13 +2,9 @@ extern crate alsa;
 
 use std::error::Error;
 
-mod rmidiproc;
-mod rmididings;
-use rmidiproc::*;
 use rmididings::*;
 
 fn main() {
-    //let options = Options::from_args();
     match run() {
         Ok(_) => (),
         Err(err) => println!("Error: {}", err)
@@ -30,12 +26,23 @@ fn run() -> Result<(), Box<dyn Error>> {
         ..ConfigArguments::default()
     })?;
 
-    println!("Started");
-
-    let patch = Pass();
-
     md.run(RunArguments {
-        patch: &patch,
+        scenes: &[
+            &Scene { // 1
+                name: "Run",
+                patch: &Pass(),
+                ..Scene::default()
+            },
+            &Scene { // 2
+                name: "Pause",
+                patch: &Discard(),
+                ..Scene::default()
+            }
+        ],
+        control: &Fork!(
+            Chain!(KeyFilter(62), SceneSwitch(2), Discard()),
+            Chain!(KeyFilter(60), SceneSwitch(1), Discard())
+        ),
         ..RunArguments::default()
     })?;
 

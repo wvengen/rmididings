@@ -1,4 +1,4 @@
-use rmidiproc::{FilterTrait,Discard,SceneNum};
+use super::proc::{FilterTrait,Discard,SceneNum};
 
 pub struct Scene<'a> {
     pub name: &'a str,

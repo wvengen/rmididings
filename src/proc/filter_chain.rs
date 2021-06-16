@@ -1,7 +1,7 @@
 #![macro_use]
-use event::*;
-use event_stream::*;
-use filter_trait::*;
+use super::event::*;
+use super::event_stream::*;
+use super::filter_trait::*;
 
 pub struct FilterChain<'a> {
     // lifetime: https://www.reddit.com/r/rust/comments/30ehed/why_must_this_reference_have_a_static_lifetime/

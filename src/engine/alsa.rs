@@ -5,7 +5,7 @@ use alsa::seq;
 use alsa::PollDescriptors;
 use std::ffi::CString;
 
-use rmidiproc::event::*;
+use super::super::proc::event::*;
 
 pub struct Backend {
     alsaseq: alsa::Seq,

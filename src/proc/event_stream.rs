@@ -1,5 +1,5 @@
 use std::fmt;
-use event::*;
+use super::event::*;
 
 pub type SceneNum = u8;
 pub type SceneNumOffset = i16;

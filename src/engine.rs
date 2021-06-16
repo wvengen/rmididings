@@ -1,11 +1,10 @@
 use std::{thread, time};
 use std::error::Error;
 
-mod alsa;
-pub mod scene;
+use super::proc::*;
+use super::scene::*;
 
-use super::rmidiproc::*;
-pub use self::scene::*;
+mod alsa;
 
 pub struct ConfigArguments<'a> {
     pub backend: &'a str,

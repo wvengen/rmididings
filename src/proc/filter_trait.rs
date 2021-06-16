@@ -1,4 +1,4 @@
-use event_stream::*;
+use super::event_stream::*;
 
 // All filters implement this trait.
 pub trait FilterTrait {

@@ -3,11 +3,10 @@ pub mod event;
 pub mod event_stream;
 pub mod filter_trait;
 pub mod filter_chain;
-pub use event::*;
-pub use event_stream::*;
-pub use filter_trait::*;
-pub use filter_chain::*;
-
+pub use self::event::*;
+pub use self::event_stream::*;
+pub use self::filter_trait::*;
+pub use self::filter_chain::*;
 
 // Filters
 
