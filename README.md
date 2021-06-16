@@ -1,5 +1,7 @@
 # RMididings
 
+[![](https://img.shields.io/crates/v/rmididings.svg)](https://crates.io/crates/rmididings)
+
 RMididings is a partial clone of [mididings](http://das.nasophon.de/mididings/)
 in [Rust](https://www.rust-lang.org/), allowing one to use a syntax not unlike
 mididings for MIDI event routing and processing. Mididings is a Python-based
