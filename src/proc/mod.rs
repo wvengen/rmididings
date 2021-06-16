@@ -307,10 +307,27 @@ impl FilterTrait for Print {
 ///
 /// assert_eq!(evs.events.len(), 1);
 /// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let f = Not!(Pass());
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f.run(&mut evs);
+///
+/// assert!(evs.events.is_empty());
+/// # }
+/// ```
 pub struct Pass();
 impl FilterTrait for Pass {
     fn run(&self, _evs: &mut EventStream) {
-        // pass, which means: keep event stream as it iss
+        // pass, which means: keep event stream as it is
+    }
+
+    fn run_inverse(&self, evs: &mut EventStream) {
+        evs.events.clear();
     }
 }
 
@@ -327,10 +344,27 @@ impl FilterTrait for Pass {
 ///
 /// assert!(evs.events.is_empty());
 /// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let f = Not!(Discard());
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// f.run(&mut evs);
+///
+/// assert_eq!(evs.events.len(), 1);
+/// # }
+/// ```
 pub struct Discard();
 impl FilterTrait for Discard {
     fn run(&self, evs: &mut EventStream) {
         evs.events.clear();
+    }
+
+    fn run_inverse(&self, _evs: &mut EventStream) {
+        // pass, which means: keep event stream as it is
     }
 }
 
