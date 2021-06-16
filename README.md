@@ -1,18 +1,16 @@
 # RMididings
 
-_This project is in its early stages, take care._
-
 RMididings is a partial clone of [mididings](http://das.nasophon.de/mididings/)
 in [Rust](https://www.rust-lang.org/), allowing one to use a syntax not unlike
 mididings for MIDI event routing and processing. Mididings is a Python-based
 MIDI router and processor.
 
-It is very early in development, and most things don't work. What does work:
+It is in early development, and many things are not available. What is:
 - `NoteOn`, `NoteOff`, `Ctrl` and `SysEx` events.
 - Only supports the `alsa` backend, which ties it to Linux.
 - A limited set of filters, modifiers and generators.
-- A limited set of connections: `Chain` and `Fork`.
-- Scenes, scene switching and running a single patch.
+- A limited set of connections: `Chain!`, `Fork!` and `Not!`.
+- Scenes and subscenes, scene switching and running a single patch.
 - Pre, post, init, exit and control patches.
 
 Some missing things can be implemented, but there are some limitations using Rust,
@@ -22,41 +20,72 @@ are supported. We'll see.
 ## Running
 
 You'll need [Rust](https://www.rust-lang.org/) 1.52.0+ with [Cargo](https://doc.rust-lang.org/cargo/).
-The easiest option to get a recent enough Rust is using [Rustup](https://rustup.rs/). Then run
+The easiest option to get a recent enough Rust is using [Rustup](https://rustup.rs/).
 
-```sh
-cargo run
+Rmididings is a crate, which means that you write your own program that uses it. Let's start with a
+simple example. Create a project directory, and a subdirectory `src`, where you put the following file
+as `main.rs`:
+
+```rust
+// src/main.rs
+extern crate rmididings;
+use rmididings::*;
+
+fn main() {
+  if let Ok(mut md) = RMididings::new() {
+    md.config(ConfigArguments {
+      in_ports:  &[["input",  "Virtual Keyboard:Virtual Keyboard"]],
+      out_ports: &[["output", "midisnoop:MIDI Input"]],
+      ..ConfigArguments::default()
+    });
+
+    md.run(RunArguments {
+      patch: &Pass(),
+      ..RunArguments::default()
+    });
+  }
+}
 ```
 
-and you're set. The default program passes all events from the input to the output port.
+To get this running, you'll also need a `Cargo.toml` in the project directory:
+
+```
+[package]
+name = "myproject"
+version = "0.0.1"
+
+[dependencies]
+rmididings = "^0.1.0"
+```
+
+Then, from within the project directory, run `cargo run`, and you're set. This sample
+program passes all events from the input to the output port. When before running you
+have [vkeybd](https://github.com/tiwai/vkeybd) and [midisnoop](https://github.com/surfacepatterns/midisnoop)
+running (same package names in Debian/Ubuntu), they will be connected automatically.
 Terminate the program with <kbd>Ctrl-C</kbd>
+
+Please note that the example here ignores some errors, which is not a good idea. Please
+use the [other examples](./examples) when you're starting your own project.
 
 ## Building a patch
 
-The main patch is defined in [`src/main.rs`](src/main.rs) and is passed as the `patch` argument
-to the `run` function. You need to start with a connection type and include filters, modifiers
-or generators inside of it. The default is just to pass all events:
+The patch above merely passes all events with `Pass()`. It becomes more interesting when
+we start building a chain of filters. Instead of `&Pass()`, we could use the following:
 
-```rust
-let patch = Pass();
+```
+&Chain!(
+  ChannelFilter(1),
+  Fork!(
+    Pass(),
+    Chain!(Transpose(4), VelocityMultiply(0.8)),
+    Chain!(Transpose(7), VelocityMultiply(0.5))
+  ),
+  Channel(2)
+)
 ```
 
-Even with the limited set we have now, it is possible to make slightly more complex chains:
-
-```rust
-let patch = Chain!(
-    ChannelFilter(1),
-    Fork!(
-        Pass(),
-        Chain!(Transpose(4), VelocityMultiply(0.8)),
-        Chain!(Transpose(7), VelocityMultiply(0.5))
-    ),
-    Channel(2)
-);
-```
-
-This example ignores any other channel than 1 and returns a major chord for the note, with
-higher notes slightly attenuated. Finally this is sent out at channel 2.
+This chain ignores any other channel than 1 and returns a major chord for the note, with
+higher notes slightly attenuated. Finally all notes are sent out at channel 2.
 
 ## Scenes
 
@@ -92,7 +121,6 @@ to switch between the scenes.
 
 ## Plans
 
-- Adding subscenes.
 - OSC support, with filters etc. like MIDI (this was hard to do in mididings without threading issues).
 - Improving syntax with macros.
 - Adding port connected / disconnected event types.
@@ -100,4 +128,4 @@ to switch between the scenes.
 
 ## License
 
-TODO (something open source)
+[GPLv3](LICENSE.md) or later.

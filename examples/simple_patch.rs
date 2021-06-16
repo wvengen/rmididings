@@ -1,7 +1,6 @@
-extern crate alsa;
-
 use std::error::Error;
 
+extern crate rmididings;
 use rmididings::*;
 
 fn main() {

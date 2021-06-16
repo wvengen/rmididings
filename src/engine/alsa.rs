@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::vec::Vec;
 
+extern crate alsa;
 use alsa::seq;
 use alsa::PollDescriptors;
 use std::ffi::CString;
