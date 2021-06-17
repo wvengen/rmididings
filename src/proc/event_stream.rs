@@ -8,16 +8,20 @@ pub type SceneNumOffset = i16;
 #[derive(Debug, Clone)]
 pub struct EventStream {
     pub events: Vec<Event>,
-    pub scene: Option<SceneNum>,
-    pub subscene: Option<SceneNum>,
+    pub current_scene: Option<SceneNum>,
+    pub new_scene: Option<SceneNum>,
+    pub current_subscene: Option<SceneNum>,
+    pub new_subscene: Option<SceneNum>,
 }
 
 impl EventStream {
     pub fn none() -> Self {
         Self {
             events: Vec::<Event>::new(),
-            scene: None,
-            subscene: None,
+            current_scene: None,
+            new_scene: None,
+            current_subscene: None,
+            new_subscene: None,
         }
     }
 
@@ -37,8 +41,7 @@ impl From<Event> for EventStream {
     fn from(ev: Event) -> Self {
         Self {
             events: vec![ev],
-            scene: None,
-            subscene: None,
+            ..Self::none()
         }
     }
 }
@@ -48,8 +51,7 @@ impl From<Option<Event>> for EventStream {
         if let Some(ev) = oev {
             Self {
                 events: vec![ev],
-                scene: None,
-                subscene: None,
+                ..Self::none()
             }
         } else {
             Self::none()
@@ -61,8 +63,7 @@ impl From<&Vec<Event>> for EventStream {
     fn from(vec: &Vec<Event>) -> Self {
         Self {
             events: vec.clone(),
-            scene: None,
-            subscene: None,
+                ..Self::none()
         }
     }
 }
@@ -73,11 +74,11 @@ impl fmt::Display for EventStream {
             .map(|e| e.to_string())
             .collect::<Vec<String>>()
             .join(", "))?;
-        if let Some(scene) = self.scene {
-            write!(f, " | scene={}", scene)?;
+        if let Some(new_scene) = self.new_scene {
+            write!(f, " | scene={}", new_scene)?;
         }
-        if let Some(subscene) = self.subscene {
-            write!(f, "  subscene={}", subscene)?;
+        if let Some(new_subscene) = self.new_subscene {
+            write!(f, " | subscene={}", new_subscene)?;
         }
         Ok(())
     }

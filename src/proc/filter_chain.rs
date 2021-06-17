@@ -37,8 +37,8 @@ impl<'a> FilterChain<'a> {
             let mut evs_this = evs.clone();
             method(&f, &mut evs_this);
             events_out.extend(evs_this.events);
-            evs.scene = evs_this.scene;
-            evs.subscene = evs_this.subscene;
+            evs.new_scene = evs_this.new_scene;
+            evs.new_subscene = evs_this.new_subscene;
         }
         evs.events.clear();
         evs.events.extend(events_out);

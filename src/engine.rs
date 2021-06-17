@@ -165,10 +165,17 @@ impl<'a> RMididings<'a> {
 
     // note: don't use this to switch to a new subscene in the current scene
     fn switch_scene_internal(&mut self, new_scene_num: SceneNum, new_subscene_num_opt: Option<SceneNum>) -> Result<(), Box<dyn Error>> {
-        // skip if we're already in the scene
         if let Some(current_scene_num) = self.current_scene_num {
-            if current_scene_num == new_scene_num { return Ok(()); }
+            if let Some(new_subscene_num) = new_subscene_num_opt {
+                // Only switch subscene if there is just a subscene change.
+                return self.switch_subscene_internal(new_subscene_num);
+            } else if current_scene_num == new_scene_num {
+                // Skip if we're already in the scene.
+                return Ok(());
+            }
         }
+
+        // TODO scene bounds checking
 
         self.run_current_subscene_exit()?;
         self.run_current_scene_exit()?;
@@ -188,10 +195,12 @@ impl<'a> RMididings<'a> {
 
     fn switch_subscene_internal(&mut self, new_subscene_num: SceneNum) -> Result<(), Box<dyn Error>> {
         if let Some(current_scene_num) = self.current_scene_num {
-            // skip if we're already in the subscene
+            // Skip if we're already in the subscene.
             if let Some(current_subscene_num) = self.current_subscene_num {
                 if current_subscene_num == new_subscene_num { return Ok(()); }
             }
+
+            // TODO subscene bounds checking
 
             self.run_current_subscene_exit()?;
 
@@ -275,10 +284,10 @@ impl<'a> RMididings<'a> {
 
         // set scene and subscene on patch
         if let Some(current_scene_num) = self.current_scene_num {
-            evs.scene = Some(current_scene_num.saturating_add(self.scene_offset));
+            evs.current_scene = Some(current_scene_num.saturating_add(self.scene_offset));
         }
         if let Some(subscene_num) = self.current_subscene_num {
-            evs.subscene = Some(subscene_num.saturating_add(self.scene_offset));
+            evs.current_subscene = Some(subscene_num.saturating_add(self.scene_offset));
         }
 
         // run patch
@@ -293,17 +302,17 @@ impl<'a> RMididings<'a> {
             self.output_event(ev)?;
         }
 
-        if let Some(scene) = evs.scene {
-            if let Some(subscene) = evs.subscene {
+        if let Some(new_scene) = evs.new_scene {
+            if let Some(new_subscene) = evs.new_subscene {
                 self.switch_scene_internal(
-                    scene.saturating_sub(self.scene_offset),
-                    Some(subscene.saturating_sub(self.scene_offset)),
+                    new_scene.saturating_sub(self.scene_offset),
+                    Some(new_subscene.saturating_sub(self.scene_offset)),
                 )?;
             } else {
-                self.switch_scene_internal(scene.saturating_sub(self.scene_offset), None)?;
+                self.switch_scene_internal(new_scene.saturating_sub(self.scene_offset), None)?;
             }
-        } else if let Some(subscene) = evs.subscene {
-            self.switch_subscene_internal(subscene.saturating_sub(self.scene_offset))?;
+        } else if let Some(new_subscene) = evs.new_subscene {
+            self.switch_subscene_internal(new_subscene.saturating_sub(self.scene_offset))?;
         }
         Ok(())
     }

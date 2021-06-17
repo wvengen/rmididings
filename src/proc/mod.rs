@@ -680,9 +680,9 @@ define_modifier!(
 /// let modifier = SceneSwitch(5);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(2);
+/// evs.current_scene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.scene, Some(5));
+/// assert_eq!(evs.new_scene, Some(5));
 /// ```
 ///
 /// ```
@@ -690,16 +690,16 @@ define_modifier!(
 /// let modifier = SceneSwitch(5);
 ///
 /// let mut evs = EventStream::none();
-/// evs.scene = Some(2);
+/// evs.current_scene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.scene, Some(2));
+/// assert_eq!(evs.new_scene, None);
 /// ```
 pub struct SceneSwitch(pub SceneNum);
 impl FilterTrait for SceneSwitch {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() {
-            if evs.scene.is_some() {
-                evs.scene = Some(self.0);
+            if evs.current_scene.is_some() {
+                evs.new_scene = Some(self.0);
             } else {
                 // TODO warn about no scenes present
             }
@@ -726,9 +726,9 @@ impl FilterTrait for SceneSwitch {
 /// let modifier = SceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(2);
+/// evs.current_scene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.scene, Some(3));
+/// assert_eq!(evs.new_scene, Some(3));
 /// ```
 ///
 /// ```
@@ -736,9 +736,9 @@ impl FilterTrait for SceneSwitch {
 /// let modifier = SceneSwitchOffset(-1);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(2);
+/// evs.current_scene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.scene, Some(1));
+/// assert_eq!(evs.new_scene, Some(1));
 /// ```
 ///
 /// ```
@@ -746,16 +746,16 @@ impl FilterTrait for SceneSwitch {
 /// let modifier = SceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::none();
-/// evs.scene = Some(2);
+/// evs.current_scene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.scene, Some(2));
+/// assert_eq!(evs.new_scene, None);
 /// ```
 pub struct SceneSwitchOffset(pub SceneNumOffset);
 impl FilterTrait for SceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() {
-            if let Some(scene) = evs.scene {
-                evs.scene = Some((scene as SceneNumOffset).saturating_add(self.0) as SceneNum);
+            if let Some(scene) = evs.current_scene {
+                evs.new_scene = Some((scene as SceneNumOffset).saturating_add(self.0) as SceneNum);
             } else {
                 // TODO warn about no scenes present
             }
@@ -779,10 +779,10 @@ impl FilterTrait for SceneSwitchOffset {
 /// let modifier = SubSceneSwitch(5);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(0);
-/// evs.subscene = Some(2);
+/// evs.current_scene = Some(0);
+/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.subscene, Some(5));
+/// assert_eq!(evs.new_subscene, Some(5));
 /// ```
 ///
 /// ```
@@ -790,17 +790,17 @@ impl FilterTrait for SceneSwitchOffset {
 /// let modifier = SubSceneSwitch(5);
 ///
 /// let mut evs = EventStream::none();
-/// evs.scene = Some(0);
-/// evs.subscene = Some(2);
+/// evs.current_scene = Some(0);
+/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.subscene, Some(2));
+/// assert_eq!(evs.new_subscene, None);
 /// ```
 pub struct SubSceneSwitch(pub SceneNum);
 impl FilterTrait for SubSceneSwitch {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() {
-            if evs.subscene.is_some() {
-                evs.subscene = Some(self.0);
+            if evs.current_subscene.is_some() {
+                evs.new_subscene = Some(self.0);
             } else {
                 // TODO warn no subscenes present for the current scene
             }
@@ -827,10 +827,10 @@ impl FilterTrait for SubSceneSwitch {
 /// let modifier = SubSceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(0);
-/// evs.subscene = Some(2);
+/// evs.current_scene = Some(0);
+/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.subscene, Some(3));
+/// assert_eq!(evs.new_subscene, Some(3));
 /// ```
 ///
 /// ```
@@ -838,10 +838,10 @@ impl FilterTrait for SubSceneSwitch {
 /// let modifier = SubSceneSwitchOffset(-1);
 ///
 /// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.scene = Some(0);
-/// evs.subscene = Some(2);
+/// evs.current_scene = Some(0);
+/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.subscene, Some(1));
+/// assert_eq!(evs.new_subscene, Some(1));
 /// ```
 ///
 /// ```
@@ -849,17 +849,17 @@ impl FilterTrait for SubSceneSwitch {
 /// let modifier = SubSceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::none();
-/// evs.scene = Some(0);
-/// evs.subscene = Some(2);
+/// evs.current_scene = Some(0);
+/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.subscene, Some(2));
+/// assert_eq!(evs.new_subscene, None);
 /// ```
 pub struct SubSceneSwitchOffset(pub SceneNumOffset);
 impl FilterTrait for SubSceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
         if evs.any() {
-            if let Some(subscene) = evs.subscene {
-                evs.subscene =
+            if let Some(subscene) = evs.current_subscene {
+                evs.new_subscene =
                     Some((subscene as SceneNumOffset).saturating_add(self.0) as SceneNum);
             } else {
                 // TODO warn no subscenes present for the current scene
