@@ -4,10 +4,19 @@ use std::{thread, time};
 use super::proc::*;
 use super::scene::*;
 
+mod backend;
+use backend::Backend;
+
 mod alsa;
+mod null;
+
+pub enum BackendType {
+    Null,
+    Alsa
+}
 
 pub struct ConfigArguments<'a> {
-    pub backend: &'a str,
+    pub backend: BackendType,
     pub client_name: &'a str,
     pub in_ports: &'a [[&'a str; 2]],
     pub out_ports: &'a [[&'a str; 2]],
@@ -21,7 +30,7 @@ pub struct ConfigArguments<'a> {
 impl ConfigArguments<'_> {
     pub fn default() -> ConfigArguments<'static> {
         ConfigArguments {
-            backend: "alsa",
+            backend: BackendType::Alsa,
             client_name: "RMididings",
             in_ports: &[],
             out_ports: &[],
@@ -55,7 +64,7 @@ impl RunArguments<'_> {
 }
 
 pub struct RMididings<'a> {
-    backend: alsa::Backend,
+    backend: Box::<dyn Backend>,
     port_offset: u8,
     channel_offset: u8,
     scene_offset: u8,
@@ -73,7 +82,7 @@ pub struct RMididings<'a> {
 impl<'a> RMididings<'a> {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            backend: alsa::Backend::new()?,
+            backend: Box::new(null::NullBackend::new()?),
             port_offset: 1,
             channel_offset: 1,
             scene_offset: 1,
@@ -90,21 +99,26 @@ impl<'a> RMididings<'a> {
     }
 
     pub fn config(&mut self, args: ConfigArguments) -> Result<(), Box<dyn Error>> {
+        self.backend = match args.backend {
+            BackendType::Null => Box::new(null::NullBackend::new()?),
+            BackendType::Alsa => Box::new(alsa::AlsaBackend::new()?),
+        };
+
         self.backend.set_client_name(args.client_name)?;
 
         for port in args.in_ports {
-            let alsaport = self.backend.create_in_port(&*port[0])?;
+            let index = self.backend.create_in_port(&*port[0])?;
             if !port[1].is_empty() {
                 if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
-                    self.backend.connect_in_port(client_name, port_name, alsaport)?;
+                    self.backend.connect_in_port(client_name, port_name, index)?;
                 }
             }
         }
         for port in args.out_ports {
-            let alsaport = self.backend.create_out_port(&*port[0])?;
+            let index = self.backend.create_out_port(&*port[0])?;
             if !port[1].is_empty() {
                 if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
-                    self.backend.connect_out_port(alsaport, client_name, port_name)?;
+                    self.backend.connect_out_port(index, client_name, port_name)?;
                 }
             }
         }
@@ -150,6 +164,7 @@ impl<'a> RMididings<'a> {
                 ev.channel = ev.channel.saturating_add(self.channel_offset);
 
                 self.run_current_patches(&ev)?;
+                continue;
             }
             self.backend.wait()?;
         }
