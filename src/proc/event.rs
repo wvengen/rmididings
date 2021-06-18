@@ -1,174 +1,184 @@
 #![allow(non_snake_case)]
-use std::fmt;
+use std::hash::{Hash, Hasher};
 
-/// MIDI Event
-///
-/// Please use one of [`Event::new()`], [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
-pub struct Event {
-    pub typ: EventType,
+#[cfg(feature = "osc")]
+extern crate rosc;
+#[cfg(feature = "dbus")]
+extern crate dbus;
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub enum Event<'a> {
+    None(NoneEventImpl),
+    NoteOn(NoteOnEventImpl),
+    NoteOff(NoteOffEventImpl),
+    Ctrl(CtrlEventImpl),
+    SysEx(SysExEventImpl<'a>),
+    SceneSwitch(SceneSwitchEventImpl),
+    SubSceneSwitch(SubSceneSwitchEventImpl),
+    Quit(QuitEventImpl),
+    #[cfg(feature = "osc")]
+    Osc(OscEventImpl),
+    #[cfg(feature = "dbus")]
+    Dbus(DbusEventImpl),
+}
+impl Default for Event<'_> {
+    fn default() -> Self {
+        Event::None(NoneEventImpl::default())
+    }
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct NoneEventImpl {}
+pub fn NoneEvent<'a>() -> Event<'a> {
+    Event::None(NoneEventImpl { })
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct NoteOnEventImpl {
     pub port: usize,
     pub channel: u8,
-    pub data1: u8,
-    pub data2: u8,
     pub note: u8,
     pub velocity: u8,
+}
+pub fn NoteOnEvent<'a>(port: usize, channel: u8, note: u8, velocity: u8) -> Event<'a> {
+    Event::NoteOn(NoteOnEventImpl { port, channel, note, velocity })
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct NoteOffEventImpl {
+    pub port: usize,
+    pub channel: u8,
+    pub note: u8,
+}
+pub fn NoteOffEvent<'a>(port: usize, channel: u8, note: u8) -> Event<'a> {
+    Event::NoteOff(NoteOffEventImpl { port, channel, note })
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct CtrlEventImpl {
+    pub port: usize,
+    pub channel: u8,
     pub ctrl: u32,
     pub value: i32,
-    pub program: u8,
-    pub sysex: &'static [u8], // TODO better lifetime specifier
+}
+pub fn CtrlEvent<'a>(port: usize, channel: u8, ctrl: u32, value: i32) -> Event<'a> {
+    Event::Ctrl(CtrlEventImpl { port, channel, ctrl, value })
 }
 
-impl Event {
-    /// Returns an empty event with a specific type.
-    ///
-    /// If possible, please use one of: [`NoteOnEvent()`], [`NoteOffEvent()`], [`CtrlEvent()`] or [`SysExEvent()`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use rmididings::proc::event::*;
-    /// let ev = Event::new(EventType::NOTEON);
-    /// assert_eq!(ev.typ, EventType::NOTEON);
-    /// ```
-    pub fn new(typ: EventType) -> Event {
-        Event { typ, port: 0, channel: 0, data1: 0, data2: 0, note: 0, velocity: 0, ctrl: 0, value: 0, program: 0, sysex: &[] }
-    }
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct SysExEventImpl<'a> {
+    pub port: usize,
+    pub data: &'a [u8],
+}
+pub fn SysExEvent<'a>(port: usize, data: &'a [u8]) -> Event<'a> {
+    Event::SysEx(SysExEventImpl { port, data })
 }
 
-impl fmt::Display for Event {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self.typ {
-            EventType::NOTEON => format!(
-                "port={} channel={}, note={} velocity={}",
-                self.port, self.channel, self.note, self.velocity
-            ),
-            EventType::NOTEOFF => format!(
-                "port={} channel={} note={}",
-                self.port, self.channel, self.note
-            ),
-            EventType::CTRL => format!(
-                "port={} channel={}, ctrl={} value={}",
-                self.port, self.channel, self.ctrl, self.value
-            ),
-            EventType::SYSEX => format!(
-                "port={} sysex={:?}",
-                self.port, self.sysex
-            ),
-        };
-        write!(f, "Event type={} {}", self.typ.to_string(), s)
-    }
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct QuitEventImpl {}
+pub fn QuitEvent<'a>() -> Event<'a> {
+    Event::Quit(QuitEventImpl { })
 }
 
-// MIDI Event type
+pub type SceneNum = u8;
+pub type SceneOffset = i16; // large enough to do computation too
+
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
-pub enum EventType {
-    NOTEON,
-    NOTEOFF,
-    CTRL,
-    SYSEX,
-    // TODO finish - see http://dsacre.github.io/mididings/doc/misc.html
-    // TODO handle event type filters (combination of several types)
+pub enum SceneSwitchValue {
+    Fixed(SceneNum),
+    Offset(SceneOffset),
 }
-
-impl fmt::Display for EventType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match self {
-            EventType::NOTEON => "NOTEON",
-            EventType::NOTEOFF => "NOTEOFF",
-            EventType::CTRL => "CTRL",
-            EventType::SYSEX => "SYSEX",
-        };
-        write!(f, "{}", s)
+impl Default for SceneSwitchValue {
+    fn default() -> Self {
+        SceneSwitchValue::Offset(0)
     }
 }
 
-/// MIDI note on event
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::event::*;
-/// let ev = NoteOnEvent(1, 2, 60, 40);
-///
-/// assert_eq!(ev.typ, EventType::NOTEON);
-/// assert_eq!(ev.port, 1);
-/// assert_eq!(ev.channel, 2);
-/// assert_eq!(ev.note, 60);
-/// assert_eq!(ev.velocity, 40);
-/// ```
-pub fn NoteOnEvent(port: usize, channel: u8, note: u8, velocity: u8) -> Event {
-    Event {
-        port,
-        channel,
-        note,
-        velocity,
-        ..Event::new(EventType::NOTEON)
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct SceneSwitchEventImpl {
+    pub scene: SceneSwitchValue,
+}
+pub fn SceneSwitchEvent<'a>(scene: SceneNum) -> Event<'a> {
+    Event::SceneSwitch(SceneSwitchEventImpl { scene: SceneSwitchValue::Fixed(scene) })
+}
+pub fn SceneSwitchOffsetEvent<'a>(offset: SceneOffset) -> Event<'a> {
+    Event::SceneSwitch(SceneSwitchEventImpl { scene: SceneSwitchValue::Offset(offset) })
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, Hash, PartialEq)]
+pub struct SubSceneSwitchEventImpl {
+    pub subscene: SceneSwitchValue,
+}
+pub fn SubSceneSwitchEvent<'a>(subscene: SceneNum) -> Event<'a> {
+    Event::SubSceneSwitch(SubSceneSwitchEventImpl { subscene: SceneSwitchValue::Fixed(subscene) })
+}
+pub fn SubSceneSwitchOffsetEvent<'a>(offset: SceneOffset) -> Event<'a> {
+    Event::SubSceneSwitch(SubSceneSwitchEventImpl { subscene: SceneSwitchValue::Offset(offset) })
+}
+
+#[cfg(feature = "osc")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct OscEventImpl {
+    pub port: usize,
+    pub addr: String,
+    pub args: Vec<rosc::OscType>,
+}
+impl OscEventImpl {
+    fn hash_osc_type<H: Hasher>(&self, arg: &rosc::OscType, state: &mut H) {
+        match arg {
+            rosc::OscType::Int(ref x) => x.hash(state),
+            rosc::OscType::Float(x) => ((x * 1e6) as u64).hash(state),
+            rosc::OscType::String(ref x) => x.hash(state),
+            rosc::OscType::Blob(ref x) => x.hash(state),
+            rosc::OscType::Time(ref x) => x.hash(state),
+            rosc::OscType::Long(ref x) => x.hash(state),
+            rosc::OscType::Double(x) => ((x * 1e6) as u64).hash(state),
+            rosc::OscType::Char(ref x) => x.hash(state),
+            rosc::OscType::Color(ref x) => [x.red, x.green, x.blue, x.alpha].hash(state),
+            rosc::OscType::Midi(ref x) => [x.port, x.status, x.data1, x.data2].hash(state),
+            rosc::OscType::Bool(ref x) => x.hash(state),
+            rosc::OscType::Array(ref x) => for el in x.content.iter() { self.hash_osc_type(el, state); },
+            rosc::OscType::Nil => 0.hash(state),
+            rosc::OscType::Inf => 1.hash(state),
+        }
+    }
+}
+// TODO get Hash, Eq support in rosc
+#[cfg(feature = "osc")]
+impl Hash for OscEventImpl {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.addr.hash(state);
+        self.args.len().hash(state);
+        for arg in self.args.iter() {
+            self.hash_osc_type(&arg, state);
+        }
+    }
+}
+#[cfg(feature = "osc")]
+impl Eq for OscEventImpl {}
+
+#[cfg(feature = "osc")]
+pub fn OscEvent<'a>(port: usize, addr: String, args: Vec<rosc::OscType>) -> Event<'a> {
+    Event::Osc(OscEventImpl { port, addr, args })
+}
+
+#[cfg(feature = "osc")]
+impl From<rosc::OscMessage> for Event<'_> {
+    fn from(message: rosc::OscMessage) -> Self {
+        OscEvent(0, message.addr, message.args)
     }
 }
 
-/// MIDI note off event
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::event::*;
-/// let ev = NoteOffEvent(1, 2, 60);
-///
-/// assert_eq!(ev.typ, EventType::NOTEOFF);
-/// assert_eq!(ev.port, 1);
-/// assert_eq!(ev.channel, 2);
-/// assert_eq!(ev.note, 60);
-/// ```
-pub fn NoteOffEvent(port: usize, channel: u8, note: u8) -> Event {
-    Event {
-        port,
-        channel,
-        note,
-        ..Event::new(EventType::NOTEOFF)
-    }
+#[cfg(feature = "dbus")]
+#[derive(Debug, Clone, Default, Eq, Hash, PartialEq)]
+pub struct DbusEventImpl {
+    pub service: String,
+    pub path: String,
+    pub interface: String,
+    pub method: String,
+    pub args: Vec<dbus::arg::ArgType>
 }
-
-/// MIDI controller event
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::event::*;
-/// let ev = CtrlEvent(1, 2, 7, 80);
-///
-/// assert_eq!(ev.typ, EventType::CTRL);
-/// assert_eq!(ev.port, 1);
-/// assert_eq!(ev.channel, 2);
-/// assert_eq!(ev.ctrl, 7);
-/// assert_eq!(ev.value, 80);
-/// ```
-pub fn CtrlEvent(port: usize, channel: u8, ctrl: u32, value: i32) -> Event {
-    Event {
-        port,
-        channel,
-        ctrl,
-        value,
-        ..Event::new(EventType::CTRL)
-    }
-}
-
-/// MIDI system exclusive event
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::event::*;
-/// let ev = SysExEvent(1, &[0xf7, 0xf0]);
-///
-/// assert_eq!(ev.typ, EventType::SYSEX);
-/// assert_eq!(ev.port, 1);
-/// assert_eq!(ev.sysex.to_vec(), vec![0xf7, 0xf0]);
-/// ```
-pub fn SysExEvent(port: usize, sysex: &'static [u8]) -> Event {
-    Event {
-        port,
-        sysex,
-        ..Event::new(EventType::SYSEX)
-    }
+#[cfg(feature = "dbus")]
+pub fn DbusEvent<'a>(service: String, path: String, interface: String, method: String, args: Vec<dbus::arg::ArgType>) -> Event<'a> {
+    Event::Dbus(DbusEventImpl { service, path, interface, method, args })
 }

@@ -38,15 +38,3 @@ impl Scene<'_> {
         }
     }
 }
-
-impl<'a> From<&'a dyn FilterTrait> for Scene<'a> {
-    fn from(ft: &'a dyn FilterTrait) -> Scene<'a> {
-        Scene {
-            name: "Single patch",
-            patch: ft,
-            init: &Discard(),
-            exit: &Discard(),
-            subscenes: &[],
-        }
-    }
-}

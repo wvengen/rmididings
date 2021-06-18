@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 #![macro_use]
 pub mod event;
 pub mod event_stream;
@@ -11,27 +12,210 @@ pub use self::filter_trait::*;
 // Filters
 
 define_filter!(
-    /// Filter on event type
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use rmididings::proc::*;
-    /// let filter = Filter(EventType::NOTEON);
-    ///
-    /// let ev1 = NoteOnEvent(0,0,60,20);
-    /// let ev2 = NoteOffEvent(0,0,61);
-    ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
-    /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0], ev1);
-    /// ```
-    Filter(EventType)
+    #[doc(hidden)]
+    _TypeMidiFilter()
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.typ == self.0
+        match ev {
+            Event::NoteOn(_) => true,
+            Event::NoteOff(_) => true,
+            Event::Ctrl(_) => true,
+            Event::SysEx(_) => true,
+            _ => false,
+        }
     }
 );
+define_filter!(
+    #[doc(hidden)]
+    _TypeNoteFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        match ev {
+            Event::NoteOn(_) => true,
+            Event::NoteOff(_) => true,
+            _ => false,
+        }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeNoteOnFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::NoteOn(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeNoteOffFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::NoteOff(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeCtrlFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::Ctrl(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeSysExFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::SysEx(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeNoneFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::None(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeQuitFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::Quit(_) = ev { true } else { false }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeSceneSwitchFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        match ev {
+            Event::SceneSwitch(_) => true,
+            _ => false,
+        }
+    }
+);
+define_filter!(
+    #[doc(hidden)]
+    _TypeSubSceneSwitchFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        match ev {
+            Event::SubSceneSwitch(_) => true,
+            _ => false,
+        }
+    }
+);
+#[cfg(feature = "osc")]
+define_filter!(
+    #[doc(hidden)]
+    _TypeOscFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::Osc(_) = ev { true } else { false }
+    }
+);
+#[cfg(feature = "dbus")]
+define_filter!(
+    #[doc(hidden)]
+    _TypeDbusFilter()
+    fn filter_single(&self, ev: &Event) -> bool {
+        if let Event::Dbus(_) = ev { true } else { false }
+    }
+);
+
+/// Filter on event type
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypeFilter!(Midi);
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// filter.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,60,20));
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypeFilter!(Note);
+///
+/// let mut evs = EventStream::from(vec![NoteOnEvent(0,0,60,20), CtrlEvent(0,0,7,20)]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,60,20));
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypeFilter!(NoteOn);
+///
+/// let mut evs = EventStream::from(vec![NoteOnEvent(0,0,60,20), NoteOffEvent(0,0,60)]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,60,20));
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypeFilter!(NoteOff);
+///
+/// let mut evs = EventStream::from(vec![NoteOnEvent(0,0,60,20), NoteOffEvent(0,0,60)]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, NoteOffEvent(0,0,60));
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypeFilter!(Ctrl);
+///
+/// let mut evs = EventStream::from(vec![NoteOnEvent(0,0,60,20), CtrlEvent(0,0,7,20)]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, CtrlEvent(0,0,7,20));
+/// # }
+/// ```
+#[macro_export]
+macro_rules! TypeFilter {
+    (Midi) => { _TypeMidiFilter() };
+    (Note) => { _TypeNoteFilter() };
+    (NoteOn) => { _TypeNoteOnFilter() };
+    (NoteOff) => { _TypeNoteOffFilter() };
+    (Ctrl) => { _TypeCtrlFilter() };
+    (SysEx) => { _TypeSysExFilter() };
+    (Quit) => { _TypeQuitFilter() };
+    (SceneSwitch) => { _TypeSceneSwitchFilter() };
+    (Osc) => { _TypeOscFilter() };
+    (Dbus) => { _TypeDbusFilter() };
+}
+
+/// Filter on multiple event types
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// # fn main() {
+/// let filter = TypesFilter!(Note, Ctrl);
+///
+/// let ev1 = NoteOnEvent(0,0,60,20);
+/// let ev2 = CtrlEvent(0,0,7,60);
+/// let ev3 = SceneSwitchEvent(2);
+///
+/// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, vec![ev1, ev2]);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! TypesFilter {
+    ( $( $ty:ident ),+ ) => {
+        Fork!( $( TypeFilter!($ty) ),+ )
+    }
+}
 
 define_filter!(
     /// Filter on port number
@@ -49,14 +233,20 @@ define_filter!(
     /// let ev1 = NoteOnEvent(0,0,60,20);
     /// let ev2 = NoteOnEvent(1,0,60,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0], ev2);
+    /// assert_eq!(evs, ev2)
     /// ```
     PortFilter(usize)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.port == self.0
+        match ev {
+            Event::NoteOn(ev) => ev.port == self.0,
+            Event::NoteOff(ev) => ev.port == self.0,
+            Event::Ctrl(ev) => ev.port == self.0,
+            Event::SysEx(ev) => ev.port == self.0,
+            Event::Osc(ev) => ev.port == self.0,
+            _ => true,
+        }
     }
 );
 
@@ -78,15 +268,23 @@ define_filter!(
     /// let ev3 = NoteOnEvent(2,0,60,20);
     /// let ev4 = NoteOnEvent(4,0,60,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev2, ev3]);
+    /// assert_eq!(evs, vec![ev2, ev3]);
     /// ```
 
     PortsFilter(&'static [usize])
     fn filter_single(&self, ev: &Event) -> bool {
-        self.0.contains(&ev.port)
+        match ev {
+            Event::NoteOn(ev) => self.0.contains(&ev.port),
+            Event::NoteOff(ev) => self.0.contains(&ev.port),
+            Event::Ctrl(ev) => self.0.contains(&ev.port),
+            Event::SysEx(ev) => self.0.contains(&ev.port),
+            Event::Osc(ev) => self.0.contains(&ev.port),
+            _ => true,
+        }
     }
+
 );
 
 define_filter!(
@@ -101,14 +299,18 @@ define_filter!(
     /// let ev1 = NoteOnEvent(0,0,60,20);
     /// let ev2 = NoteOnEvent(0,1,60,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0], ev2);
+    /// assert_eq!(evs, ev2);
     /// ```
     ChannelFilter(u8)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.channel == self.0
+        match ev {
+            Event::NoteOn(ev) => ev.channel == self.0,
+            Event::NoteOff(ev) => ev.channel == self.0,
+            Event::Ctrl(ev) => ev.channel == self.0,
+            _ => true,
+        }
     }
 );
 
@@ -126,13 +328,18 @@ define_filter!(
     /// let ev3 = NoteOnEvent(0,2,60,20);
     /// let ev4 = NoteOnEvent(0,3,60,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev3, ev4]);
+    /// assert_eq!(evs, vec![ev3, ev4]);
     /// ```
     ChannelsFilter(&'static [u8])
     fn filter_single(&self, ev: &Event) -> bool {
-        self.0.contains(&ev.channel)
+        match ev {
+            Event::NoteOn(ev) => self.0.contains(&ev.channel),
+            Event::NoteOff(ev) => self.0.contains(&ev.channel),
+            Event::Ctrl(ev) => self.0.contains(&ev.channel),
+            _ => true,
+        }
     }
 );
 
@@ -148,14 +355,17 @@ define_filter!(
     /// let ev1 = NoteOnEvent(0,0,60,20);
     /// let ev2 = NoteOnEvent(0,0,61,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0], ev1);
+    /// assert_eq!(evs, ev1);
     /// ```
     KeyFilter(u8)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.note == self.0
+        match ev {
+            Event::NoteOn(ev) => ev.note == self.0,
+            Event::NoteOff(ev) => ev.note == self.0,
+            _ => true,
+        }
     }
 );
 
@@ -173,13 +383,18 @@ define_filter!(
     /// let ev3 = NoteOnEvent(0,0,62,20);
     /// let ev4 = NoteOnEvent(0,0,63,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1, ev4]);
+    /// assert_eq!(evs, vec![ev1, ev4]);
     /// ```
     KeysFilter(&'static [u8])
     fn filter_single(&self, ev: &Event) -> bool {
-        self.0.contains(&ev.note)
+        match ev {
+            Event::NoteOn(ev) => self.0.contains(&ev.note),
+            Event::NoteOff(ev) => self.0.contains(&ev.note),
+            _ => true,
+        }
+
     }
 );
 
@@ -197,13 +412,17 @@ define_filter!(
     /// let ev3 = NoteOnEvent(0,0,62,20);
     /// let ev4 = NoteOnEvent(0,0,63,20);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1, ev2, ev3]);
+    /// assert_eq!(evs, vec![ev1, ev2, ev3]);
     /// ```
     KeyRangeFilter(u8, u8)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.note >= self.0 && ev.note <= self.1
+        match ev {
+            Event::NoteOn(ev) => ev.note >= self.0 && ev.note <= self.1,
+            Event::NoteOff(ev) => ev.note >= self.0 && ev.note <= self.1,
+            _ => true,
+        }
     }
 );
 
@@ -219,13 +438,16 @@ define_filter!(
     /// let ev1 = CtrlEvent(0,0,7,40);
     /// let ev2 = CtrlEvent(0,0,8,40);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1]);
+    /// assert_eq!(evs, ev1);
     /// ```
     CtrlFilter(u32)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.ctrl == self.0
+        match ev {
+            Event::Ctrl(ev) => ev.ctrl == self.0,
+            _ => true,
+        }
     }
 );
 
@@ -242,13 +464,16 @@ define_filter!(
     /// let ev2 = CtrlEvent(0,0,8,40);
     /// let ev3 = CtrlEvent(0,0,9,40);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1, ev2]);
+    /// assert_eq!(evs, vec![ev1, ev2]);
     /// ```
     CtrlsFilter(&'static [u32])
     fn filter_single(&self, ev: &Event) -> bool {
-        self.0.contains(&ev.ctrl)
+        match ev {
+            Event::Ctrl(ev) => self.0.contains(&ev.ctrl),
+            _ => true,
+        }
     }
 );
 
@@ -264,13 +489,16 @@ define_filter!(
     /// let ev1 = CtrlEvent(0,0,7,0);
     /// let ev2 = CtrlEvent(0,0,7,80);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1]);
+    /// assert_eq!(evs, ev1);
     /// ```
     CtrlValueFilter(i32)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.value == self.0
+        match ev {
+            Event::Ctrl(ev) => ev.value == self.0,
+            _ => true,
+        }
     }
 );
 
@@ -287,13 +515,16 @@ define_filter!(
     /// let ev2 = CtrlEvent(0,0,7,1);
     /// let ev3 = CtrlEvent(0,0,7,2);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1, ev2]);
+    /// assert_eq!(evs, vec![ev1, ev2]);
     /// ```
     CtrlValuesFilter(&'static[i32])
     fn filter_single(&self, ev: &Event) -> bool {
-        self.0.contains(&ev.value)
+        match ev {
+            Event::Ctrl(ev) => self.0.contains(&ev.value),
+            _ => true,
+        }
     }
 );
 
@@ -310,17 +541,20 @@ define_filter!(
     /// let ev2 = CtrlEvent(0,0,7,10);
     /// let ev3 = CtrlEvent(0,0,7,50);
     ///
-    /// let mut evs = EventStream::from(&vec![ev1, ev2, ev3]);
+    /// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3]);
     /// filter.run(&mut evs);
-    /// assert_eq!(evs.events.to_vec(), vec![ev1, ev2]);
+    /// assert_eq!(evs, vec![ev1, ev2]);
     /// ```
     CtrlValueRangeFilter(i32, i32)
     fn filter_single(&self, ev: &Event) -> bool {
-        ev.value >= self.0 && ev.value <= self.1
+        match ev {
+            Event::Ctrl(ev) => ev.value >= self.0 && ev.value <= self.1,
+            _ => true,
+        }
     }
 );
 
-// Generators
+// // Generators
 
 define_generator!(
     /// Generate a NoteOn event.
@@ -336,15 +570,12 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = NoteOn(60, 20);
     ///
-    /// let mut evs = EventStream::none();
+    /// let mut evs = EventStream::empty();
     /// generator.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].typ, EventType::NOTEON);
-    /// assert_eq!(evs.events[0].note, 60);
-    /// assert_eq!(evs.events[0].velocity, 20);
+    /// assert_eq!(evs, NoteOnEvent(0, 0, 60, 20))
     /// ```
     NoteOn(u8, u8)
-    fn generate_single(&self) -> Event {
+    fn generate_single(&self) -> Event<'static> {
         NoteOnEvent(0, 0, self.0, self.1)
     }
 );
@@ -363,14 +594,12 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = NoteOff(65);
     ///
-    /// let mut evs = EventStream::none();
+    /// let mut evs = EventStream::empty();
     /// generator.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].typ, EventType::NOTEOFF);
-    /// assert_eq!(evs.events[0].note, 65);
+    /// assert_eq!(evs, NoteOffEvent(0, 0, 65))
     /// ```
     NoteOff(u8)
-    fn generate_single(&self) -> Event {
+    fn generate_single(&self) -> Event<'static> {
         NoteOffEvent(0, 0, self.0)
     }
 );
@@ -389,15 +618,12 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = Ctrl(7, 40);
     ///
-    /// let mut evs = EventStream::none();
+    /// let mut evs = EventStream::empty();
     /// generator.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].typ, EventType::CTRL);
-    /// assert_eq!(evs.events[0].ctrl, 7);
-    /// assert_eq!(evs.events[0].value, 40);
+    /// assert_eq!(evs, CtrlEvent(0, 0, 7, 40));
     /// ```
     Ctrl(u32, i32)
-    fn generate_single(&self) -> Event {
+    fn generate_single(&self) -> Event<'static> {
         CtrlEvent(0, 0, self.0, self.1)
     }
 );
@@ -416,19 +642,17 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = SysEx(&[0xf7, 0xf0]);
     ///
-    /// let mut evs = EventStream::none();
+    /// let mut evs = EventStream::empty();
     /// generator.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].typ, EventType::SYSEX);
-    /// assert_eq!(evs.events[0].sysex.to_vec(), vec![0xf7, 0xf0]);
+    /// assert_eq!(evs, SysExEvent(0, &[0xf7, 0xf0]));
     /// ```
     SysEx(&'static [u8])
-    fn generate_single(&self) -> Event {
+    fn generate_single(&self) -> Event<'static> {
         SysExEvent(0, self.0)
     }
 );
 
-// Modifiers
+// // Modifiers
 
 define_modifier!(
     /// Modify the port to a set value.
@@ -447,12 +671,18 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].port, 1);
+    /// assert_eq!(evs, NoteOnEvent(1,0,60,20));
     /// ```
     Port(usize)
-    fn modify_single(&self, ev:&mut  Event) {
-        ev.port = self.0;
+    fn modify_single(&self, ev:&mut Event) {
+        match ev {
+            Event::NoteOn(ev) => ev.port = self.0,
+            Event::NoteOff(ev) => ev.port = self.0,
+            Event::Ctrl(ev) => ev.port = self.0,
+            Event::SysEx(ev) => ev.port = self.0,
+            Event::Osc(ev) => ev.port = self.0,
+            _ => {},
+        }
     }
 );
 
@@ -469,12 +699,16 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].channel, 1);
+    /// assert_eq!(evs, NoteOnEvent(0,1,60,20));
     /// ```
     Channel(u8)
     fn modify_single(&self, ev: &mut Event) {
-        ev.channel = self.0;
+        match ev {
+            Event::NoteOn(ev) => ev.channel = self.0,
+            Event::NoteOff(ev) => ev.channel = self.0,
+            Event::Ctrl(ev) => ev.channel = self.0,
+            _ => {},
+        }
     }
 );
 
@@ -491,8 +725,7 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].note, 64);
+    /// assert_eq!(evs, NoteOnEvent(0,0,64,20));
     /// ```
     ///
     /// ```
@@ -501,46 +734,44 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].note, 56);
+    /// assert_eq!(evs, NoteOnEvent(0,0,56,20));
     /// ```
     Transpose(i16)
     fn modify_single(&self, ev: &mut Event) {
-        ev.note = (ev.note as i16).saturating_add(self.0) as u8;
+        match ev {
+            Event::NoteOn(ev) => ev.note = (ev.note as i16).saturating_add(self.0) as u8,
+            Event::NoteOff(ev) => ev.note = (ev.note as i16).saturating_add(self.0) as u8,
+            _ => {},
+        }
     }
 );
 
-define_modifier!(
-    /// Modify the key (note) by an number of octaves.
-    ///
-    /// The argument is: _octaves_.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use rmididings::proc::*;
-    /// let modifier = TransposeOctave(1);
-    ///
-    /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
-    /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].note, 72);
-    /// ```
-    ///
-    /// ```
-    /// # use rmididings::proc::*;
-    /// let modifier = TransposeOctave(-1);
-    ///
-    /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
-    /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].note, 48);
-    /// ```
-    TransposeOctave(i16)
-    fn modify_single(&self, ev: &mut Event) {
-        ev.note = (ev.note as i16).saturating_add(self.0 * 12) as u8;
-    }
-);
+/// Modify the key (note) by an number of octaves.
+///
+/// The argument is: _octaves_.
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let modifier = TransposeOctave(1);
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// modifier.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,72,20));
+/// ```
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let modifier = TransposeOctave(-1);
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// modifier.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,48,20));
+/// ```
+pub fn TransposeOctave(octaves: i16) -> Transpose {
+    Transpose(octaves * 12)
+}
 
 define_modifier!(
     /// Modify the key (note) to a set value.
@@ -555,12 +786,15 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].note, 68);
+    /// assert_eq!(evs, NoteOnEvent(0,0,68,20));
     /// ```
     Key(u8)
     fn modify_single(&self, ev: &mut Event) {
-        ev.note = self.0;
+        match ev {
+            Event::NoteOn(ev) => ev.note = self.0,
+            Event::NoteOff(ev) => ev.note = self.0,
+            _ => {},
+        }
     }
 );
 
@@ -577,8 +811,7 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,40));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].velocity, 50);
+    /// assert_eq!(evs, NoteOnEvent(0,0,60,50));
     /// ```
     ///
     /// ```
@@ -587,12 +820,14 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,40));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].velocity, 30);
+    /// assert_eq!(evs, NoteOnEvent(0,0,60,30));
     /// ```
     Velocity(i16)
     fn modify_single(&self, ev: &mut Event) {
-        ev.velocity = (ev.velocity as i16).saturating_add(self.0) as u8;
+        match ev {
+            Event::NoteOn(ev) => ev.velocity = (ev.velocity as i16).saturating_add(self.0) as u8,
+            _ => {},
+        }
     }
 );
 
@@ -609,12 +844,14 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,40));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].velocity, 20);
+    /// assert_eq!(evs, NoteOnEvent(0,0,60,20));
     /// ```
     VelocityMultiply(f32)
     fn modify_single(&self, ev: &mut Event) {
-        ev.velocity = ((ev.velocity as f32) * self.0) as u8;
+        match ev {
+            Event::NoteOn(ev) => ev.velocity = ((ev.velocity as f32) * self.0) as u8,
+            _ => {},
+        }
     }
 );
 
@@ -631,12 +868,14 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,40));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].velocity, 50);
+    /// assert_eq!(evs, NoteOnEvent(0,0,60,50));
     /// ```
     VelocityFixed(u8)
     fn modify_single(&self, ev: &mut Event) {
-        ev.velocity = self.0;
+        match ev {
+            Event::NoteOn(ev) => ev.velocity = self.0,
+            _ => {},
+        }
     }
 );
 
@@ -653,20 +892,25 @@ define_modifier!(
     ///
     /// let mut evs = EventStream::from(CtrlEvent(0,0,7,50));
     /// modifier.run(&mut evs);
-    /// assert_eq!(evs.events.len(), 1);
-    /// assert_eq!(evs.events[0].ctrl, 8);
+    /// assert_eq!(evs, CtrlEvent(0,0,8,50));
     /// ```
     CtrlMap(u32, u32)
     fn modify_single(&self, ev: &mut Event) {
-        if ev.ctrl == self.0 { ev.ctrl = self.1 };
+        match ev {
+            Event::Ctrl(ev) if ev.ctrl == self.0 => ev.ctrl = self.1,
+            _ => {}
+        }
     }
 );
 
-// Scene switching
+// // Scene switching
 
 /// Switches to a specific scene.
 ///
 /// The argument is: _scene_number_.
+///
+/// This event consumes all other events, so after this filter
+/// only the curent scene switch remains.
 ///
 /// Note that the scene is only switched when there are events, so
 /// that when an event filter discards all events, the scene switch
@@ -677,39 +921,26 @@ define_modifier!(
 ///
 /// ```
 /// # use rmididings::proc::*;
-/// let modifier = SceneSwitch(5);
-///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_scene, Some(5));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SceneSwitch(5);
+/// let generator = SceneSwitch(5);
 ///
 /// let mut evs = EventStream::none();
-/// evs.current_scene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_scene, None);
+/// generator.run(&mut evs);
+/// assert_eq!(evs, SceneSwitchEvent(5));
 /// ```
 pub struct SceneSwitch(pub SceneNum);
 impl FilterTrait for SceneSwitch {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() {
-            if evs.current_scene.is_some() {
-                evs.new_scene = Some(self.0);
-            } else {
-                // TODO warn about no scenes present
-            }
-        }
+        if evs.is_empty() { return; }
+        TypeFilter!(SceneSwitch).run(evs);
+        evs.push(SceneSwitchEvent(self.0));
     }
 }
 
 /// Change the current scene by the specified amount.
 ///
-/// The argument is: _scene_delta.
+/// The argument is: _scene_delta_.
+///
+/// This event removes all non-scene-switch evens.
 ///
 /// To go to the next scene, use `SceneSwitchOffset(1)`,
 /// to go to the previous scene, use `SceneSwitchOffset(-1)`.
@@ -723,49 +954,26 @@ impl FilterTrait for SceneSwitch {
 ///
 /// ```
 /// # use rmididings::proc::*;
-/// let modifier = SceneSwitchOffset(1);
-///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_scene, Some(3));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SceneSwitchOffset(-1);
-///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_scene, Some(1));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SceneSwitchOffset(1);
+/// let generator = SceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::none();
-/// evs.current_scene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_scene, None);
+/// generator.run(&mut evs);
+/// assert_eq!(evs, SceneSwitchOffsetEvent(1));
 /// ```
-pub struct SceneSwitchOffset(pub SceneNumOffset);
+pub struct SceneSwitchOffset(pub SceneOffset);
 impl FilterTrait for SceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() {
-            if let Some(scene) = evs.current_scene {
-                evs.new_scene = Some((scene as SceneNumOffset).saturating_add(self.0) as SceneNum);
-            } else {
-                // TODO warn about no scenes present
-            }
-        }
+        if evs.is_empty() { return; }
+        TypeFilter!(SceneSwitch).run(evs);
+        evs.push(SceneSwitchOffsetEvent(self.0));
     }
 }
 
 /// Switches to a specific subscene.
 ///
 /// The argument is: _subscene_number_.
+///
+/// This event removes all non-scene-switch evens.
 ///
 /// Note that the subscene is only switched when there are events, so
 /// that when an event filter discards all events, the subscene switch
@@ -778,39 +986,24 @@ impl FilterTrait for SceneSwitchOffset {
 /// # use rmididings::proc::*;
 /// let modifier = SubSceneSwitch(5);
 ///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(0);
-/// evs.current_subscene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_subscene, Some(5));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SubSceneSwitch(5);
-///
 /// let mut evs = EventStream::none();
-/// evs.current_scene = Some(0);
-/// evs.current_subscene = Some(2);
 /// modifier.run(&mut evs);
-/// assert_eq!(evs.new_subscene, None);
+/// assert_eq!(evs, SubSceneSwitchEvent(5));
 /// ```
 pub struct SubSceneSwitch(pub SceneNum);
 impl FilterTrait for SubSceneSwitch {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() {
-            if evs.current_subscene.is_some() {
-                evs.new_subscene = Some(self.0);
-            } else {
-                // TODO warn no subscenes present for the current scene
-            }
-        }
+        if evs.is_empty() { return; }
+        TypeFilter!(SceneSwitch).run(evs);
+        evs.push(SubSceneSwitchEvent(self.0));
     }
 }
 
 /// Change the current subscene by the specified amount.
 ///
-/// The argument is: _subscene_delta.
+/// The argument is: _subscene_delta_.
+///
+/// This event removes all non-scene-switch evens.
 ///
 /// To go to the next scene, use `SubSceneSwitchOffset(1)`,
 /// to go to the previous scene, use `SubSceneSwitchOffset(-1)`.
@@ -824,47 +1017,18 @@ impl FilterTrait for SubSceneSwitch {
 ///
 /// ```
 /// # use rmididings::proc::*;
-/// let modifier = SubSceneSwitchOffset(1);
-///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(0);
-/// evs.current_subscene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_subscene, Some(3));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SubSceneSwitchOffset(-1);
-///
-/// let mut evs = EventStream::from(Event::new(EventType::NOTEON));
-/// evs.current_scene = Some(0);
-/// evs.current_subscene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_subscene, Some(1));
-/// ```
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SubSceneSwitchOffset(1);
+/// let generator = SubSceneSwitchOffset(1);
 ///
 /// let mut evs = EventStream::none();
-/// evs.current_scene = Some(0);
-/// evs.current_subscene = Some(2);
-/// modifier.run(&mut evs);
-/// assert_eq!(evs.new_subscene, None);
+/// generator.run(&mut evs);
+/// assert_eq!(evs, SubSceneSwitchOffsetEvent(1));
 /// ```
-pub struct SubSceneSwitchOffset(pub SceneNumOffset);
+pub struct SubSceneSwitchOffset(pub SceneOffset);
 impl FilterTrait for SubSceneSwitchOffset {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() {
-            if let Some(subscene) = evs.current_subscene {
-                evs.new_subscene =
-                    Some((subscene as SceneNumOffset).saturating_add(self.0) as SceneNum);
-            } else {
-                // TODO warn no subscenes present for the current scene
-            }
-        }
+        if evs.is_empty() { return; }
+        TypeFilter!(SceneSwitch).run(evs);
+        evs.push(SubSceneSwitchOffsetEvent(self.0));
     }
 }
 
@@ -902,14 +1066,39 @@ macro_rules! Exit {
     };
 }
 
-// Misc
+// // Misc
 
 /// Prints the current events.
 pub struct Print();
 impl FilterTrait for Print {
     fn run(&self, evs: &mut EventStream) {
-        if evs.any() {
-            println!("{}", evs.to_string());
+        if !evs.is_empty() {
+            println!("{:?}", evs);
+        }
+    }
+}
+
+/// Quit mididings
+///
+/// This event consumes all other events, so after this filter
+/// only the quit event remains.
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let generator = Quit();
+///
+/// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
+/// generator.run(&mut evs);
+/// assert_eq!(evs, QuitEvent());
+/// ```
+pub struct Quit();
+impl FilterTrait for Quit {
+    fn run(&self, evs: &mut EventStream) {
+        if !evs.is_empty() {
+            evs.clear();
+            evs.push(QuitEvent());
         }
     }
 }
@@ -925,7 +1114,7 @@ impl FilterTrait for Print {
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f.run(&mut evs);
 ///
-/// assert_eq!(evs.events.len(), 1);
+/// assert_eq!(evs.len(), 1);
 /// ```
 ///
 /// ```
@@ -937,7 +1126,7 @@ impl FilterTrait for Print {
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f.run(&mut evs);
 ///
-/// assert!(evs.events.is_empty());
+/// assert!(evs.is_empty());
 /// # }
 /// ```
 pub struct Pass();
@@ -947,11 +1136,11 @@ impl FilterTrait for Pass {
     }
 
     fn run_inverse(&self, evs: &mut EventStream) {
-        evs.events.clear();
+        evs.clear();
     }
 }
 
-/// Discards all events.
+/// Discard all events.
 ///
 /// # Examples
 ///
@@ -962,7 +1151,7 @@ impl FilterTrait for Pass {
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f.run(&mut evs);
 ///
-/// assert!(evs.events.is_empty());
+/// assert!(evs.is_empty());
 /// ```
 ///
 /// ```
@@ -974,17 +1163,44 @@ impl FilterTrait for Pass {
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f.run(&mut evs);
 ///
-/// assert_eq!(evs.events.len(), 1);
+/// assert_eq!(evs.len(), 1);
 /// # }
 /// ```
 pub struct Discard();
 impl FilterTrait for Discard {
     fn run(&self, evs: &mut EventStream) {
-        evs.events.clear();
+        evs.clear();
     }
 
     fn run_inverse(&self, _evs: &mut EventStream) {
         // pass, which means: keep event stream as it is
+    }
+}
+
+/// Send MIDI panic
+///
+/// Sends all notes off (CC#123) and sustain off (CC#64) on all channels.
+///
+/// Note that, in contrast to mididings, the events are subject to port
+/// selection, so if you have multiple ports, send multiple MIDI panic
+/// events (one to each port).
+///
+/// # Examples
+///
+/// ```
+/// # use rmididings::proc::*;
+/// let generator = Panic();
+///
+/// let mut evs = EventStream::empty();
+/// generator.run(&mut evs);
+///
+/// assert_eq!(evs.len(), 32);
+/// ```
+pub struct Panic();
+impl FilterTrait for Panic {
+    fn run(&self, evs: &mut EventStream) {
+        evs.extend((0..16).map(|c| CtrlEvent(0, c, 123, 0)));
+        evs.extend((0..16).map(|c| CtrlEvent(0, c,  64, 0)));
     }
 }
 
@@ -1016,10 +1232,9 @@ impl FilterTrait for _Not<'_> {
 /// let ev1 = NoteOnEvent(0,0,60,20);
 /// let ev2 = NoteOnEvent(0,0,61,20);
 ///
-/// let mut evs = EventStream::from(&vec![ev1, ev2]);
+/// let mut evs = EventStream::from(vec![&ev1, &ev2]);
 /// filter.run(&mut evs);
-/// assert_eq!(evs.events.len(), 1);
-/// assert_eq!(evs.events[0], ev2);
+/// assert_eq!(evs, ev2);
 /// # }
 /// ```
 ///
@@ -1033,15 +1248,15 @@ impl FilterTrait for _Not<'_> {
 ///
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f1.run(&mut evs);
-/// assert!(!evs.events.is_empty());
+/// assert!(!evs.is_empty());
 ///
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f2.run(&mut evs);
-/// assert!(evs.events.is_empty());
+/// assert!(evs.is_empty());
 ///
 /// let mut evs = EventStream::from(NoteOnEvent(0,0,60,20));
 /// f3.run(&mut evs);
-/// assert!(!evs.events.is_empty());
+/// assert!(!evs.is_empty());
 /// # }
 /// ```
 #[macro_export]
@@ -1050,3 +1265,27 @@ macro_rules! Not {
         _Not(Box::new($f))
     };
 }
+
+/// Process the incoming event using a custom function, returning a patch.
+///
+/// Any other processing will be stalled until function returns, so this should only be used with
+/// functions that don’t block.
+// pub struct Process<'a>(dyn Fn(&Event) -> FilterChain<'a>);
+// impl FilterTrait for Process<'_> {
+//     fn run(&self, evs: &mut EventStream) {
+//         let filters: Vec<Box<dyn FilterTrait>> = vec![];
+
+//         for ev in evs.iter() {
+//             filters.push(Box::new(self.0(&ev)));
+//         }
+
+//         for f in filters {
+//             f.run(evs);
+//         }
+//     }
+// }
+
+#[cfg(feature = "osc")]
+pub mod osc;
+#[cfg(feature = "osc")]
+pub use osc::*;

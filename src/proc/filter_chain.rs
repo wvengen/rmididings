@@ -23,7 +23,6 @@ impl<'a> FilterChain<'a> {
         for f in self.filters.iter() {
             method(&f, evs);
         }
-        evs.dedup();
     }
 
     fn run_fork(&self, evs: &mut EventStream, method: &dyn Fn(&Box<dyn FilterTrait + 'a>, &mut EventStream)) {
@@ -36,12 +35,10 @@ impl<'a> FilterChain<'a> {
         for f in self.filters.iter() {
             let mut evs_this = evs.clone();
             method(&f, &mut evs_this);
-            events_out.extend(evs_this.events);
-            evs.new_scene = evs_this.new_scene;
-            evs.new_subscene = evs_this.new_subscene;
+            events_out.extend(evs_this);
         }
-        evs.events.clear();
-        evs.events.extend(events_out);
+        evs.clear();
+        evs.extend(events_out);
         evs.dedup();
     }
 }
@@ -107,10 +104,10 @@ pub enum ConnectionType {
 /// let ev3 = NoteOnEvent(0,1,60,20);
 /// let ev4 = NoteOnEvent(0,1,61,20);
 ///
-/// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+/// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
 /// chain.run(&mut evs);
 ///
-/// assert_eq!(evs.events.to_vec(), vec![ev3]);
+/// assert_eq!(evs, ev3);
 /// # }
 /// ```
 ///
@@ -143,10 +140,10 @@ macro_rules! Chain {
 /// let ev3 = NoteOnEvent(0,1,60,20);
 /// let ev4 = NoteOnEvent(0,1,61,20);
 ///
-/// let mut evs = EventStream::from(&vec![ev1, ev2, ev3, ev4]);
+/// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4]);
 /// chain.run(&mut evs);
 ///
-/// assert_eq!(evs.events.to_vec(), vec![ev3, ev4, ev1]);
+/// assert_eq!(evs, vec![ev3, ev4, ev1]);
 /// # }
 /// ```
 ///
@@ -173,11 +170,11 @@ macro_rules! define_filter {
 
         impl FilterTrait for $name {
             fn run(&self, evs: &mut EventStream) {
-                evs.events.retain(|ev| self.filter_single(&ev));
+                evs.retain(|ev| self.filter_single(&ev));
             }
 
             fn run_inverse(&self, evs: &mut EventStream) {
-                evs.events.retain(|ev| !self.filter_single(&ev));
+                evs.retain(|ev| !self.filter_single(&ev));
             }
         }
     }
@@ -195,7 +192,7 @@ macro_rules! define_modifier {
 
         impl FilterTrait for $name {
             fn run(&self, evs: &mut EventStream) {
-                for ev in evs.events.iter_mut() {
+                for ev in evs.iter_mut() {
                     self.modify_single(ev);
                 }
             }
@@ -215,7 +212,7 @@ macro_rules! define_generator {
 
         impl FilterTrait for $name {
             fn run(&self, evs: &mut EventStream) {
-                evs.events.push(self.generate_single());
+                evs.push(self.generate_single());
             }
         }
     }

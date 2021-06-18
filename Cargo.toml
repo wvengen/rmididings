@@ -11,5 +11,12 @@ categories = ["multimedia::audio"]
 readme = "README.md"
 edition = "2018"
 
+[features]
+default = ["alsa", "osc"]
+osc = ["rosc"]
+
 [dependencies]
-alsa = "^0.5.0"
+libc = "^0.2.97"
+alsa = { version = "^0.5.0", optional = true }
+rosc = { version = "^0.5.2", optional = true }
+dbus = { version = "^0.9.3", optional = true }

@@ -1,47 +1,8 @@
 use std::error::Error;
-use std::{thread, time};
 
-use super::proc::*;
-use super::scene::*;
-
-mod backend;
-use backend::Backend;
-
-mod alsa;
-mod null;
-
-pub enum BackendType {
-    Null,
-    Alsa
-}
-
-pub struct ConfigArguments<'a> {
-    pub backend: BackendType,
-    pub client_name: &'a str,
-    pub in_ports: &'a [[&'a str; 2]],
-    pub out_ports: &'a [[&'a str; 2]],
-    pub data_offset: u8,
-    pub scene_offset: SceneNum,
-    //pub octave_offset: u8,
-    pub initial_scene: SceneNum,
-    pub start_delay: f32,
-}
-
-impl ConfigArguments<'_> {
-    pub fn default() -> ConfigArguments<'static> {
-        ConfigArguments {
-            backend: BackendType::Alsa,
-            client_name: "RMididings",
-            in_ports: &[],
-            out_ports: &[],
-            data_offset: 1,
-            scene_offset: 1,
-            //octave_offset: 2,
-            initial_scene: 0,
-            start_delay: 0.0,
-        }
-    }
-}
+use crate::proc::*;
+use crate::scene::*;
+use crate::backend::Backend;
 
 pub struct RunArguments<'a> {
     pub patch: &'a dyn FilterTrait,
@@ -57,17 +18,17 @@ impl RunArguments<'_> {
             patch: &Discard(),
             scenes: &[],
             control: &Discard(),
-            pre: &Discard(),
-            post: &Discard(),
+            pre: &Pass(),
+            post: &Pass(),
         }
     }
 }
 
-pub struct RMididings<'a> {
-    backend: Box::<dyn Backend>,
+pub struct Runner<'a, 'backend: 'a> {
+    backends: &'a mut Vec<Box::<dyn Backend<'backend> + 'backend>>,
     port_offset: u8,
     channel_offset: u8,
-    scene_offset: u8,
+    scene_offset: SceneNum,
     patch: &'a dyn FilterTrait,
     scenes: &'a [&'a Scene<'a>],
     control: &'a dyn FilterTrait,
@@ -77,108 +38,73 @@ pub struct RMididings<'a> {
     current_scene_num: Option<SceneNum>,
     current_subscene_num: Option<SceneNum>,
     stored_subscene_nums: Vec<Option<SceneNum>>,
+    running: bool,
 }
 
-impl<'a> RMididings<'a> {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
-        Ok(Self {
-            backend: Box::new(null::NullBackend::new()?),
-            port_offset: 1,
-            channel_offset: 1,
-            scene_offset: 1,
-            patch: &Discard(),
-            scenes: &[],
-            control: &Discard(),
-            pre: &Discard(),
-            post: &Discard(),
-            initial_scene_num: 0,
+impl<'a, 'backend: 'a> Runner<'a, 'backend> {
+    pub fn new(args: RunArguments<'a>, backends: &'a mut Vec<Box::<dyn Backend<'backend> + 'backend>>, port_offset: u8, channel_offset: u8, scene_offset: SceneNum, initial_scene_num: SceneNum) -> Self {
+        // TODO error when both patch and scenes are given?
+
+        let stored_subscene_nums = args.scenes
+            .iter()
+            .map(|scene| { if scene.subscenes.is_empty() { None } else { Some(0) } })
+            .collect();
+
+        Self {
+            backends,
+            port_offset,
+            channel_offset,
+            scene_offset,
+            patch: args.patch,
+            scenes: args.scenes,
+            control: args.control,
+            pre: args.pre,
+            post: args.post,
+            initial_scene_num,
             current_scene_num: None,
             current_subscene_num: None,
-            stored_subscene_nums: Vec::<Option<SceneNum>>::new(),
-        })
+            stored_subscene_nums,
+            running: false,
+        }
     }
 
-    pub fn config(&mut self, args: ConfigArguments) -> Result<(), Box<dyn Error>> {
-        self.backend = match args.backend {
-            BackendType::Null => Box::new(null::NullBackend::new()?),
-            BackendType::Alsa => Box::new(alsa::AlsaBackend::new()?),
-        };
+    pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        // Gather polling file descriptors
+        let mut pollfds: Vec<libc::pollfd> = vec![];
 
-        self.backend.set_client_name(args.client_name)?;
-
-        for port in args.in_ports {
-            let index = self.backend.create_in_port(&*port[0])?;
-            if !port[1].is_empty() {
-                if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
-                    self.backend.connect_in_port(client_name, port_name, index)?;
-                }
-            }
-        }
-        for port in args.out_ports {
-            let index = self.backend.create_out_port(&*port[0])?;
-            if !port[1].is_empty() {
-                if let Some((client_name, port_name)) = (&*port[1]).split_once(':') {
-                    self.backend.connect_out_port(index, client_name, port_name)?;
-                }
-            }
+        for backend in self.backends.iter_mut() {
+            pollfds.extend(backend.get_pollfds()?);
         }
 
-        if args.start_delay > 0.0 {
-            thread::sleep(time::Duration::from_secs_f32(args.start_delay));
-        }
-
-        self.initial_scene_num = args.initial_scene;
-        self.port_offset = args.data_offset;
-        self.channel_offset = args.data_offset;
-        self.scene_offset = args.scene_offset;
-
-        Ok(())
-    }
-
-    pub fn run(&mut self, args: RunArguments<'a>) -> Result<(), Box<dyn Error>> {
-        // Handle arguments
-        self.patch = args.patch;
-        self.scenes = args.scenes;
-        self.control = args.control;
-        self.pre = args.pre;
-        self.post = args.post;
-
-        // TODO error when both patch and scenes are given
-
-        if !args.scenes.is_empty() {
+        // Setup scene
+        if !self.scenes.is_empty() {
             self.current_scene_num = Some(self.initial_scene_num);
 
-            self.stored_subscene_nums = args.scenes.iter()
-                .map(|scene| { if scene.subscenes.is_empty() { None } else { Some(0) } })
-                .collect();
             self.current_subscene_num = *self.get_stored_subscene_num();
             self.print_current_scene();
         }
 
+        self.running = true;
+
         self.run_current_scene_init()?;
         self.run_current_subscene_init()?;
 
-        loop {
-            if let Some(mut ev) = self.backend.run()? {
-                ev.port = ev.port.saturating_add(self.port_offset as usize);
-                ev.channel = ev.channel.saturating_add(self.channel_offset);
-
+        // Main runner loop
+        while self.running {
+            // Backend
+            let events: EventStream = self.backends.iter_mut().flat_map(|b| b.run()).collect();
+            for mut ev in events.into_iter() {
+                self.backend_event_to_user(&mut ev);
                 self.run_current_patches(&ev)?;
-                continue;
             }
-            self.backend.wait()?;
+
+            // Wait until there is a new event
+            poll(&mut pollfds, 1000);
         }
+
+        Ok(())
     }
 
-    pub fn switch_scene(&mut self, scene: SceneNum) -> Result<(), Box<dyn Error>> {
-        self.switch_scene_internal(scene.saturating_sub(self.scene_offset), None)
-    }
-
-    pub fn switch_subscene(&mut self, subscene: SceneNum) -> Result<(), Box<dyn Error>> {
-        self.switch_subscene_internal(subscene.saturating_sub(self.scene_offset))
-    }
-
-    // note: don't use this to switch to a new subscene in the current scene
     fn switch_scene_internal(&mut self, new_scene_num: SceneNum, new_subscene_num_opt: Option<SceneNum>) -> Result<(), Box<dyn Error>> {
         if let Some(current_scene_num) = self.current_scene_num {
             if let Some(new_subscene_num) = new_subscene_num_opt {
@@ -204,6 +130,7 @@ impl<'a> RMididings<'a> {
 
         self.run_current_scene_init()?;
         self.run_current_subscene_init()?;
+
 
         Ok(())
     }
@@ -249,15 +176,15 @@ impl<'a> RMididings<'a> {
     }
 
     fn run_current_patches(&mut self, ev: &Event) -> Result<(), Box<dyn Error>> {
-        self.run_patch(self.control, SceneRunType::Patch, Some(*ev))?;
+        self.run_patch(self.control, SceneRunType::Patch, Some(ev))?;
         // TODO don't run patch when scene was just switched in control
         //      maybe do scene switching at the end of the full patch?
         //      in that case we'll need current_scene and new_scene in EventStream
-        self.run_patch(self.patch, SceneRunType::Patch, Some(*ev))?;
+        self.run_patch(self.patch, SceneRunType::Patch, Some(ev))?;
         if let Some(current_scene) = get_scene(&self.scenes, self.current_scene_num) {
-            self.run_patch(current_scene.patch, SceneRunType::Patch, Some(*ev))?;
+            self.run_patch(current_scene.patch, SceneRunType::Patch, Some(ev))?;
             if let Some(current_subscene) = current_scene.get_subscene_opt(self.current_subscene_num) {
-                self.run_patch(current_subscene.patch, SceneRunType::Patch, Some(*ev))?;
+                self.run_patch(current_subscene.patch, SceneRunType::Patch, Some(ev))?;
             }
         }
         Ok(())
@@ -284,26 +211,53 @@ impl<'a> RMididings<'a> {
     }
 
     pub fn output_event(&mut self, ev: &Event) -> Result<u32, Box<dyn Error>> {
-        if self.channel_offset == 0 && self.port_offset == 0 {
-            self.backend.output_event(&ev)
-        } else {
-            let mut ev = *ev;
-            ev.port = ev.port.saturating_sub(self.port_offset as usize);
-            ev.channel = ev.channel.saturating_sub(self.channel_offset);
-            self.backend.output_event(&ev)
+        match ev {
+            Event::Quit(_) => {
+                self.running = false;
+            },
+            Event::SceneSwitch(SceneSwitchEventImpl { scene: SceneSwitchValue::Fixed(f) }) => {
+                self.switch_scene_internal(f.saturating_sub(self.scene_offset), None)?;
+            },
+            Event::SceneSwitch(SceneSwitchEventImpl { scene: SceneSwitchValue::Offset(o) }) => {
+                if let Some(current_scene) = self.current_scene_num {
+                    let f = (current_scene as SceneOffset).saturating_add(*o) as SceneNum;
+                    self.switch_scene_internal(f, None)?;
+                }
+            },
+            Event::SubSceneSwitch(SubSceneSwitchEventImpl { subscene: SceneSwitchValue::Fixed(f) }) => {
+                self.switch_subscene_internal(f.saturating_sub(self.scene_offset))?;
+            },
+            Event::SubSceneSwitch(SubSceneSwitchEventImpl { subscene: SceneSwitchValue::Offset(o) }) => {
+                if let Some(current_subscene) = self.current_subscene_num {
+                    let f = (current_subscene as SceneOffset).saturating_add(*o) as SceneNum;
+                    self.switch_subscene_internal(f)?;
+                }
+            },
+            _ => {
+                // If there is no channel and port offset, we can directly send the event.
+                if self.channel_offset == 0 && self.port_offset == 0 {
+                    // Try all backends until one handles it (i.e. sends more than 0 bytes).
+                    for backend in self.backends.iter_mut() {
+                        let r = backend.output_event(&ev)?;
+                        if r > 0 { return Ok(r); }
+                    }
+                // Otherwise we need to modify a copy of the event and send it.
+                } else {
+                    let mut ev = ev.clone();
+                    self.user_event_to_backend(&mut ev);
+                    // Try all backends until one handles it (i.e. sends more than 0 bytes).
+                    for backend in self.backends.iter_mut() {
+                        let r = backend.output_event(&ev)?;
+                        if r > 0 { return Ok(r); }
+                    }
+                }
+            }
         }
+        Ok(0)
     }
 
-    fn run_patch(&mut self, filter: &dyn FilterTrait, run_type: SceneRunType, ev: Option<Event>) -> Result<(), Box<dyn Error>> {
-        let mut evs = EventStream::from(ev);
-
-        // set scene and subscene on patch
-        if let Some(current_scene_num) = self.current_scene_num {
-            evs.current_scene = Some(current_scene_num.saturating_add(self.scene_offset));
-        }
-        if let Some(subscene_num) = self.current_subscene_num {
-            evs.current_subscene = Some(subscene_num.saturating_add(self.scene_offset));
-        }
+    fn run_patch<'oev>(&mut self, filter: &dyn FilterTrait, run_type: SceneRunType, ev: Option<&Event<'oev>>) -> Result<(), Box<dyn Error>> {
+        let mut evs = if let Some(ev) = ev { EventStream::from(ev) } else { EventStream::none() };
 
         // run patch
         match run_type {
@@ -313,22 +267,10 @@ impl<'a> RMididings<'a> {
         }
 
         // handle resulting event stream
-        for ev in evs.events.iter() {
+        for ev in evs.iter() {
             self.output_event(ev)?;
         }
 
-        if let Some(new_scene) = evs.new_scene {
-            if let Some(new_subscene) = evs.new_subscene {
-                self.switch_scene_internal(
-                    new_scene.saturating_sub(self.scene_offset),
-                    Some(new_subscene.saturating_sub(self.scene_offset)),
-                )?;
-            } else {
-                self.switch_scene_internal(new_scene.saturating_sub(self.scene_offset), None)?;
-            }
-        } else if let Some(new_subscene) = evs.new_subscene {
-            self.switch_subscene_internal(new_subscene.saturating_sub(self.scene_offset))?;
-        }
         Ok(())
     }
 
@@ -366,8 +308,57 @@ impl<'a> RMididings<'a> {
         }
         &None
     }
+
+    fn backend_event_to_user(&self, ev: &mut Event) {
+        match ev {
+            Event::NoteOn(ev) => {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_add(self.channel_offset);
+            },
+            Event::NoteOff(ev) => {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_add(self.channel_offset);
+            },
+            Event::Ctrl(ev) => {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_add(self.channel_offset);
+            },
+            Event::SysEx(ev) => {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+            },
+            Event::Osc(ev) => {
+                ev.port = ev.port.saturating_add(self.port_offset as usize);
+            },
+            _ => {}
+        }
+    }
+
+    fn user_event_to_backend(&self, ev: &mut Event) {
+        match ev {
+            Event::NoteOn(ev) => {
+                ev.port = ev.port.saturating_sub(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_sub(self.channel_offset);
+            },
+            Event::NoteOff(ev) => {
+                ev.port = ev.port.saturating_sub(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_sub(self.channel_offset);
+            },
+            Event::Ctrl(ev) => {
+                ev.port = ev.port.saturating_sub(self.port_offset as usize);
+                ev.channel = ev.channel.saturating_sub(self.channel_offset);
+            },
+            Event::SysEx(ev) => {
+                ev.port = ev.port.saturating_sub(self.port_offset as usize);
+            },
+            Event::Osc(ev) => {
+                ev.port = ev.port.saturating_sub(self.port_offset as usize);
+            },
+            _ => {}
+        }
+    }
 }
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 enum SceneRunType {
     Patch,
     Init,
@@ -381,4 +372,11 @@ fn get_scene<'a>(scenes: &'a [&Scene<'a>], scene_num_opt: Option<SceneNum>) -> O
         }
     }
     None
+}
+
+// https://www.reddit.com/r/rust/comments/65kflg/does_rust_have_native_epoll_support/dgcnbtd?utm_source=share&utm_medium=web2x&context=3
+fn poll(fds: &mut [libc::pollfd], timeout: libc::c_int) -> libc::c_int {
+    unsafe {
+        libc::poll(&mut fds[0] as *mut libc::pollfd, fds.len() as libc::nfds_t, timeout)
+    }
 }

@@ -31,8 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         ],
         control: &Fork!(
-            Chain!(KeyFilter(62), SceneSwitch(2), Discard()),
-            Chain!(KeyFilter(60), SceneSwitch(1), Discard())
+            Chain!(TypeFilter!(Note), KeyFilter(62), SceneSwitch(2)),
+            Chain!(TypeFilter!(Note), KeyFilter(60), SceneSwitch(1))
         ),
         ..RunArguments::default()
     })?;

@@ -14,5 +14,7 @@ pub use proc::*;
 mod scene;
 pub use scene::*;
 
+mod backend;
+
 mod engine;
 pub use engine::*;
