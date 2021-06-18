@@ -33,22 +33,25 @@ as `main.rs`:
 
 ```rust
 // src/main.rs
+#[macro_use]
 extern crate rmididings;
 use rmididings::*;
 
-fn main() {
-  if let Ok(mut md) = RMididings::new() {
-    md.config(ConfigArguments {
-      in_ports:  &[["input",  "Virtual Keyboard:Virtual Keyboard"]],
-      out_ports: &[["output", "midisnoop:MIDI Input"]],
-      ..ConfigArguments::default()
-    });
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  let mut md = RMididings::new()?;
 
-    md.run(RunArguments {
-      patch: &Pass(),
-      ..RunArguments::default()
-    });
-  }
+  md.config(ConfigArguments {
+    in_ports:  &[["input",  "Virtual Keyboard:Virtual Keyboard"]],
+    out_ports: &[["output", "midisnoop:MIDI Input"]],
+    ..ConfigArguments::default()
+  })?;
+
+  md.run(RunArguments {
+    patch: &Pass(),
+    ..RunArguments::default()
+  })?;
+
+  Ok(())
 }
 ```
 
@@ -68,9 +71,6 @@ program passes all events from the input to the output port. When before running
 have [vkeybd](https://github.com/tiwai/vkeybd) and [midisnoop](https://github.com/surfacepatterns/midisnoop)
 running (same package names in Debian/Ubuntu), they will be connected automatically.
 Terminate the program with <kbd>Ctrl-C</kbd>
-
-Please note that the example here ignores some errors, which is not a good idea. Please
-use the [other examples](./examples) when you're starting your own project.
 
 ## Building a patch
 

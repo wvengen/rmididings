@@ -1,16 +1,8 @@
-use std::error::Error;
-
+#[macro_use]
 extern crate rmididings;
 use rmididings::*;
 
-fn main() {
-    match run() {
-        Ok(_) => (),
-        Err(err) => println!("Error: {}", err)
-    }
-}
-
-fn run() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut md = RMididings::new()?;
 
@@ -47,4 +39,3 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
