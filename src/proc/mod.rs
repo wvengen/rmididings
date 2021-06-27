@@ -244,6 +244,7 @@ define_filter!(
             Event::NoteOff(ev) => ev.port == self.0,
             Event::Ctrl(ev) => ev.port == self.0,
             Event::SysEx(ev) => ev.port == self.0,
+            #[cfg(feature = "osc")]
             Event::Osc(ev) => ev.port == self.0,
             _ => true,
         }
@@ -272,7 +273,6 @@ define_filter!(
     /// filter.run(&mut evs);
     /// assert_eq!(evs, vec![ev2, ev3]);
     /// ```
-
     PortsFilter(&'static [usize])
     fn filter_single(&self, ev: &Event) -> bool {
         match ev {
@@ -280,6 +280,7 @@ define_filter!(
             Event::NoteOff(ev) => self.0.contains(&ev.port),
             Event::Ctrl(ev) => self.0.contains(&ev.port),
             Event::SysEx(ev) => self.0.contains(&ev.port),
+            #[cfg(feature = "osc")]
             Event::Osc(ev) => self.0.contains(&ev.port),
             _ => true,
         }
@@ -680,6 +681,7 @@ define_modifier!(
             Event::NoteOff(ev) => ev.port = self.0,
             Event::Ctrl(ev) => ev.port = self.0,
             Event::SysEx(ev) => ev.port = self.0,
+            #[cfg(feature = "osc")]
             Event::Osc(ev) => ev.port = self.0,
             _ => {},
         }

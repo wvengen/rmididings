@@ -30,8 +30,6 @@ impl Event<'_> {
             Event::SysEx(ref ev) => Some(ev.port),
             #[cfg(feature = "osc")]
             Event::Osc(ref ev) => Some(ev.port),
-            #[cfg(feature = "dbus")]
-            Event::Dbus(ref ev) => Some(ev.port),
             _ => None,
         }
     }
@@ -44,8 +42,6 @@ impl Event<'_> {
             Event::SysEx(ref mut ev) => { ev.port = port; true },
             #[cfg(feature = "osc")]
             Event::Osc(ref mut ev) => { ev.port = port; true },
-            #[cfg(feature = "dbus")]
-            Event::Dbus(ref mut ev) => { ev.port = port; true },
             _ => false,
         }
     }
@@ -170,6 +166,7 @@ pub struct OscEventImpl {
     pub addr: String,
     pub args: Vec<rosc::OscType>,
 }
+#[cfg(feature = "osc")]
 impl OscEventImpl {
     fn hash_osc_type<H: Hasher>(&self, arg: &rosc::OscType, state: &mut H) {
         match arg {

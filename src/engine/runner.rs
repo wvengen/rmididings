@@ -328,6 +328,7 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
             Event::SysEx(ev) => {
                 ev.port = ev.port.saturating_add(self.port_offset as usize);
             },
+            #[cfg(feature = "osc")]
             Event::Osc(ev) => {
                 ev.port = ev.port.saturating_add(self.port_offset as usize);
             },
@@ -352,6 +353,7 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
             Event::SysEx(ev) => {
                 ev.port = ev.port.saturating_sub(self.port_offset as usize);
             },
+            #[cfg(feature = "osc")]
             Event::Osc(ev) => {
                 ev.port = ev.port.saturating_sub(self.port_offset as usize);
             },
