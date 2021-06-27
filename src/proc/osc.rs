@@ -1,3 +1,4 @@
+pub use rosc::OscType;
 use crate::proc::event::*;
 use crate::proc::filter_trait::*;
 use crate::proc::event_stream::*;
@@ -6,7 +7,7 @@ use std::collections::HashMap;
 
 define_generator!(
     #[doc(hidden)]
-    _Osc(String, Vec<rosc::OscType>)
+    _Osc(String, Vec<OscType>)
     fn generate_single(&self) -> Event<'static> {
         OscEvent(0, self.0.clone(), self.1.clone())
     }
@@ -31,7 +32,7 @@ define_generator!(
 /// ```
 /// # #[macro_use] extern crate rmididings;
 /// # use rmididings::proc::*;
-/// use rosc::OscType as o;
+/// use rmididings::osc::OscType as o;
 ///
 /// # fn main() {
 /// let filter = Osc!("/bar", o::Int(5), o::String("yes".to_string()));
@@ -142,7 +143,7 @@ define_modifier!(
 );
 
 #[doc(hidden)]
-pub struct _ProcessOsc(pub Box<dyn Fn(&Vec<rosc::OscType>) -> Box<dyn FilterTrait>>);
+pub struct _ProcessOsc(pub Box<dyn Fn(&Vec<OscType>) -> Box<dyn FilterTrait>>);
 impl FilterTrait for _ProcessOsc {
     fn run(&self, evs: &mut EventStream) {
         let mut results: HashMap<usize, EventStream> = HashMap::new();
@@ -179,7 +180,7 @@ impl FilterTrait for _ProcessOsc {
 /// ```
 /// # #[macro_use] extern crate rmididings;
 /// # use rmididings::proc::*;
-/// use rosc::OscType as o;
+/// use rmididings::osc::OscType as o;
 ///
 /// # fn main() {
 /// let filter = Chain!(OscAddrFilter("/foo"), ProcessOsc!(o::Int, |i| NoteOn(i as u8, 30)));
@@ -193,7 +194,7 @@ impl FilterTrait for _ProcessOsc {
 /// ```
 /// # #[macro_use] extern crate rmididings;
 /// # use rmididings::proc::*;
-/// use rosc::OscType as o;
+/// use rmididings::osc::OscType as o;
 ///
 /// # fn main() {
 /// let filter = Chain!(OscAddrFilter("/foo"), ProcessOsc!(o::Int, |i| NoteOn(i as u8, 30)));
@@ -214,7 +215,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argt0(arg0)] => { Box::new($f(arg0)) },
                         _ => Box::new(Pass()),
@@ -226,7 +227,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1)] => { Box::new($f(arg0, arg1)) },
                         _ => Box::new(Pass()),
@@ -238,7 +239,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2)] => { Box::new($f(arg0, arg1, arg2)) },
                         _ => Box::new(Pass()),
@@ -250,7 +251,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $arg3:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2), $argt3(arg3)] => { Box::new($f(arg0, arg1, arg2, arg3)) },
                         _ => Box::new(Pass()),
@@ -262,7 +263,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $arg3:path, $arg4:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2), $argt3(arg3), $argt4(arg4)] => { Box::new($f(arg0, arg1, arg2, arg3, arg4)) },
                         _ => Box::new(Pass()),
@@ -274,7 +275,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $arg3:path, $arg4:path, $arg5:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2), $argt3(arg3), $argt4(arg4), $argt5(arg5)] => { Box::new($f(arg0, arg1, arg2, arg3, arg4, arg5)) },
                         _ => Box::new(Pass()),
@@ -286,7 +287,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $arg3:path, $arg4:path, $arg5:path, $arg6:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2), $argt3(arg3), $argt4(arg4), $argt5(arg5), $argt6(arg6)] => { Box::new($f(arg0, arg1, arg2, arg3, arg4, arg5, arg6)) },
                         _ => Box::new(Pass()),
@@ -298,7 +299,7 @@ macro_rules! ProcessOsc {
     ( $argt0:path, $argt1:path, $arg2:path, $arg3:path, $arg4:path, $arg5:path, $arg6:path, $arg7:path, $f:expr ) => {
         _ProcessOsc(
             Box::new(
-                |args: &Vec<rosc::OscType>| {
+                |args: &Vec<OscType>| {
                     match args[..] {
                         [$argtyp(arg0), $argt1(arg1), $argt2(arg2), $argt3(arg3), $argt4(arg4), $argt5(arg5), $argt6(arg6), $argt7(arg7)] => { Box::new($f(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)) },
                         _ => Box::new(Pass()),

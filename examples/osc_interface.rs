@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rmididings;
 use rmididings::*;
-use rosc::OscType as o;
+use rmididings::osc::OscType as o;
 
 /// Example patch that works with livedings.
 ///
@@ -9,8 +9,8 @@ use rosc::OscType as o;
 /// plug into your RMididings program, either as a filter for use e.g. in the control
 /// patch, or as a hook.
 ///
-/// You can do scene switches from livedings, but scene switches happening elsewhere
-/// within a patch are not communicated to livedings.
+/// You can do scene switches from livedings, but as of yet livedings is not notified
+/// of scene switches, i.e. it doesn't know which scene is currently active.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut md = RMididings::new()?;
 
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // We can't notify on scene switch yet.
         // post: &Fork!(
         //     Pass(),
-        //     Chain!(TypeFilter(SceneSwitch), ... Process(|ev| Osc!("/mididings/current_scene", scene, subscene)))
+        //     Chain!(TypeFilter(SceneSwitch), ... Process(|ev| Osc!("/mididings/current_scene", o::Int(scene), o::Int(subscene))))
         // ),
         ..RunArguments::default()
     })?;
