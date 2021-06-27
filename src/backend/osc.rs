@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 pub extern crate rosc;
 
-use super::super::proc::event::{Event, OscEventImpl};
+use super::super::proc::event::{Event, OscEvent, OscEventImpl};
 use super::super::proc::EventStream;
 use super::backend::{Backend, PortNum};
 
@@ -171,10 +171,10 @@ impl<'a> Backend<'a> for OscBackend<'a> {
     fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>> {
         let mut evs = EventStream::empty();
 
-        for port in self.in_ports.values_mut() {
+        for (backend_port, port) in self.in_ports.iter_mut() {
             if let Some(udp_listener) = &port.udp_listener {
                 if let Some(data) = read_udp_data(&udp_listener, &mut self.buf)? {
-                    evs.extend(decode_data(data).into_iter().map(|o| Event::from(o)));
+                    evs.extend(decode_data(data).into_iter().map(|o| build_event(o, *backend_port)));
                 }
             }
 
@@ -195,19 +195,20 @@ impl<'a> Backend<'a> for OscBackend<'a> {
 
             for tcp_stream in port.tcp_listen_streams.iter_mut() {
                 if let Some(data) = read_tcp_data(tcp_stream, &mut self.buf)? {
-                    evs.extend(decode_data_tcp(data).into_iter().map(|o| Event::from(o)));
+                    evs.extend(decode_data_tcp(data).into_iter().map(|o| build_event(o, *backend_port)));
                 }
             }
         }
 
-        // This isn't really used in practice, as OSC doesn't keep open connections AFAIK.
-        for port in self.out_ports.values_mut() {
-            if let Some(tcp_stream) = &mut port.tcp_connect_stream {
-                if let Some(data) = read_tcp_data(tcp_stream, &mut self.buf)? {
-                    evs.extend(decode_data_tcp(data).into_iter().map(|o| Event::from(o)));
-                }
-            }
-        }
+        // As far as I've seen, OSC doesn't respond on connections opened by us.
+        // It would also be a bit of a problem, as we have no corresponding input port to associate this with.
+        // for (backend_port, port) in self.out_ports.iter_mut() {
+        //     if let Some(tcp_stream) = &mut port.tcp_connect_stream {
+        //         if let Some(data) = read_tcp_data(tcp_stream, &mut self.buf)? {
+        //             evs.extend(decode_data_tcp(data).into_iter().map(|o| build_event(o, ???)));
+        //         }
+        //     }
+        // }
 
         Ok(evs)
     }
@@ -332,4 +333,8 @@ fn get_messages_from_packet(packet: rosc::OscPacket) -> Vec::<rosc::OscMessage> 
             bundle.content.into_iter().map(|p| get_messages_from_packet(p)).flatten().collect()
         },
     }
+}
+
+fn build_event<'a>(message: rosc::OscMessage, port: PortNum) -> Event<'a> {
+    OscEvent(port, message.addr, message.args)
 }

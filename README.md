@@ -18,7 +18,8 @@ It is in somewhat early development, and many things are not available. What is:
 
 Some missing things can be implemented, but there are some limitations using Rust,
 e.g. syntax can differ, and not all variations of argument types to filters etc.
-are supported. We'll see.
+are supported. Sometimes the syntax is a bit messy (e.g. with `Process`). We'll see
+what can be improved.
 
 ## Running
 

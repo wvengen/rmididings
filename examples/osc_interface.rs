@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
                 OscAddPrefix("/mididings")
             ),
-            Chain!(OscAddrFilter("/switch_scene"), ProcessOsc!(o::Int, |s| SceneSwitch(s as u8))),
+            Chain!(OscAddrFilter("/switch_scene"), ProcessOsc!(o::Int, |s: &i32| SceneSwitch(*s as u8))),
             Chain!(OscAddrFilter("/next_scene"), SceneSwitchOffset(1)),
             Chain!(OscAddrFilter("/prev_scene"), SceneSwitchOffset(-1)),
             Chain!(OscAddrFilter("/prev_subscene"), SubSceneSwitchOffset(-1)),

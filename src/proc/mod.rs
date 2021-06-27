@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 #![macro_use]
+use std::collections::HashMap;
+
 pub mod event;
 pub mod event_stream;
 pub mod filter_chain;
@@ -1256,24 +1258,62 @@ macro_rules! Not {
     };
 }
 
+#[doc(hidden)]
+pub struct _Process(pub Box<dyn Fn(&Event) -> Box<dyn FilterTrait>>);
+#[doc(hidden)]
+impl FilterTrait for _Process {
+    fn run(&self, evs: &mut EventStream) {
+       let mut results: HashMap<usize, EventStream> = HashMap::new();
+
+        // First gather all resulting EventStreams from the function invocations.
+        for (i, ev) in evs.iter().enumerate() {
+            let mut evs = EventStream::from(ev);
+            self.0(ev).run(&mut evs);
+            results.insert(i, evs);
+       }
+
+        // Then replace the events by their results.
+        for (i, r_evs) in results {
+            evs.splice(i..i+1, r_evs);
+        }
+
+        evs.dedup();
+    }
+}
+
 /// Process the incoming event using a custom function, returning a patch.
 ///
 /// Any other processing will be stalled until function returns, so this should only be used with
 /// functions that don’t block.
-// pub struct Process<'a>(dyn Fn(&Event) -> FilterChain<'a>);
-// impl FilterTrait for Process<'_> {
-//     fn run(&self, evs: &mut EventStream) {
-//         let filters: Vec<Box<dyn FilterTrait>> = vec![];
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+///
+/// # fn main() {
+/// let filter = Process!(|ev: &Event| -> Box<dyn FilterTrait> {
+///     match ev {
+///         Event::NoteOff(ev) => Box::new(NoteOn(ev.note + 1, 40)),
+///         _ => Box::new(Pass()),
+///     }
+/// });
+///
+/// let mut evs = EventStream::from(NoteOffEvent(0,0,60));
+/// filter.run(&mut evs);
+/// assert_eq!(evs, NoteOnEvent(0,0,61,40));
+/// # }
+/// ```
+#[macro_export]
+macro_rules! Process {
+    ( $f:expr ) => { _Process(Box::new($f)) };
+}
 
-//         for ev in evs.iter() {
-//             filters.push(Box::new(self.0(&ev)));
-//         }
-
-//         for f in filters {
-//             f.run(evs);
-//         }
-//     }
-// }
+#[macro_export]
+macro_rules! ProcessCtrl {
+    ( $f:expr ) => { _Process(Box::new($f)) };
+}
 
 #[cfg(feature = "osc")]
 pub mod osc;
