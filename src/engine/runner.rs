@@ -156,7 +156,6 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
     }
 
     fn run_current_scene_init(&mut self) -> Result<(), Box<dyn Error>> {
-        self.run_patch(self.pre, SceneRunType::Patch, None)?;
         self.run_patch(self.patch, SceneRunType::Init, None)?;
         if let Some(current_scene) = get_scene(&self.scenes, self.current_scene_num) {
             self.run_patch(current_scene.init, SceneRunType::Patch, None)?;
@@ -206,7 +205,6 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
             self.run_patch(current_scene.exit, SceneRunType::Patch, None)?;
         }
         self.run_patch(self.patch, SceneRunType::Exit, None)?;
-        self.run_patch(self.post, SceneRunType::Patch, None)?;
         Ok(())
     }
 
@@ -259,12 +257,16 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
     fn run_patch<'oev>(&mut self, filter: &dyn FilterTrait, run_type: SceneRunType, ev: Option<&Event<'oev>>) -> Result<(), Box<dyn Error>> {
         let mut evs = if let Some(ev) = ev { EventStream::from(ev) } else { EventStream::none() };
 
+        self.pre.run(&mut evs);
+
         // run patch
         match run_type {
             SceneRunType::Patch => filter.run(&mut evs),
             SceneRunType::Init => filter.run_init(&mut evs),
             SceneRunType::Exit => filter.run_exit(&mut evs),
         }
+
+        self.post.run(&mut evs);
 
         // handle resulting event stream
         for ev in evs.iter() {
