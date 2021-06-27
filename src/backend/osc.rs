@@ -98,7 +98,7 @@ impl<'a> Backend<'a> for OscBackend<'a> {
             match backend_name {
                 "osc" => self._create_in_port(backend_port, port_name, true, true),
                 "osc.udp" => self._create_in_port(backend_port, port_name, true, false),
-                "osc.tcp" => self._create_in_port(backend_port, port_name, false, false),
+                "osc.tcp" => self._create_in_port(backend_port, port_name, false, true),
                 _ => Ok(false)
             }
         } else {
@@ -112,7 +112,7 @@ impl<'a> Backend<'a> for OscBackend<'a> {
             match backend_name {
                 "osc" => self._create_out_port(backend_port, port_name, true, true),
                 "osc.udp" => self._create_out_port(backend_port, port_name, true, false),
-                "osc.tcp" => self._create_out_port(backend_port, port_name, false, false),
+                "osc.tcp" => self._create_out_port(backend_port, port_name, false, true),
                 _ => Ok(false)
             }
         } else {
@@ -129,7 +129,7 @@ impl<'a> Backend<'a> for OscBackend<'a> {
         if let Some(port) = self.out_ports.get_mut(&backend_port) {
             port.addr = Some(name);
 
-            // UDP needs to connection setup, we just send it.
+            // UDP needs no connection setup, we just send it.
 
             if port.tcp {
                 if let Ok(stream) = TcpStream::connect(name) {
