@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scenes: &[
             &Scene { // 1
                 name: "Run",
-                patch: &Pass(),
+                patch: &Not!(TypeFilter!(Osc)),
                 ..Scene::default()
             },
             &Scene { // 2
@@ -41,12 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         ],
         control: &Chain!(TypeFilter!(Osc), OscStripPrefix("/mididings"), Fork!(
-            Chain!(OscAddrFilter("/query"), Discard(),
-                Osc!("/data_offset", o::Int(1)),
-                Osc!("/begin_scenes"),
-                Osc!("/add_scene", o::Int(1), o::String("Run".to_string())),
-                Osc!("/add_scene", o::Int(2), o::String("Pause".to_string())),
-                Osc!("/end_scenes"),
+            Chain!(OscAddrFilter("/query"),
+                Fork!(
+                    Osc!("/data_offset", o::Int(1)),
+                    Osc!("/begin_scenes"),
+                    Osc!("/add_scene", o::Int(1), o::String("Run".to_string())),
+                    Osc!("/add_scene", o::Int(2), o::String("Pause".to_string())),
+                    Osc!("/end_scenes")
+                ),
                 OscAddPrefix("/mididings")
             ),
             Chain!(OscAddrFilter("/switch_scene"), ProcessOsc!(o::Int, |s| SceneSwitch(s as u8))),

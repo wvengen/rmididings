@@ -212,7 +212,22 @@ macro_rules! define_generator {
 
         impl FilterTrait for $name {
             fn run(&self, evs: &mut EventStream) {
-                evs.push(self.generate_single());
+                if evs.is_empty() { return; }
+
+                // Generate new event
+                let new_ev = self.generate_single();
+                // Replace each event, keeping port and channel.
+                for ev in evs.iter_mut() {
+                    let mut this_new_ev = new_ev.clone();
+                    if let Some(port) = ev.port() {
+                        this_new_ev.set_port(port);
+                    }
+                    if let Some(channel) = ev.channel() {
+                        this_new_ev.set_channel(channel);
+                    }
+                    *ev = this_new_ev;
+                }
+                evs.dedup();
             }
         }
     }

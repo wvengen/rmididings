@@ -2,6 +2,8 @@ use crate::proc::event::*;
 use crate::proc::filter_trait::*;
 use crate::proc::event_stream::*;
 
+use std::collections::HashMap;
+
 define_generator!(
     #[doc(hidden)]
     _Osc(String, Vec<rosc::OscType>)
@@ -20,7 +22,7 @@ define_generator!(
 /// # fn main() {
 /// let filter = Osc!("/foo");
 ///
-/// let mut evs = EventStream::empty();
+/// let mut evs = EventStream::none();
 /// filter.run(&mut evs);
 /// assert_eq!(evs, OscEvent(0, "/foo".to_string(), vec![]));
 /// # }
@@ -34,7 +36,7 @@ define_generator!(
 /// # fn main() {
 /// let filter = Osc!("/bar", o::Int(5), o::String("yes".to_string()));
 ///
-/// let mut evs = EventStream::empty();
+/// let mut evs = EventStream::none();
 /// filter.run(&mut evs);
 /// assert_eq!(evs, OscEvent(0, "/bar".to_string(), vec![o::Int(5), o::String("yes".to_string())]));
 /// # }
@@ -143,31 +145,34 @@ define_modifier!(
 pub struct _ProcessOsc(pub Box<dyn Fn(&Vec<rosc::OscType>) -> Box<dyn FilterTrait>>);
 impl FilterTrait for _ProcessOsc {
     fn run(&self, evs: &mut EventStream) {
-        let mut filters: Vec<Box<dyn FilterTrait>> = vec![];
+        let mut results: HashMap<usize, EventStream> = HashMap::new();
 
-        for ev in evs.iter_mut() {
+        // First gather all resulting EventStreams from the function invocations.
+        for (i, ev) in evs.iter().enumerate() {
             match ev {
                 Event::Osc(OscEventImpl { port: _, addr: _, args }) => {
-                    filters.push(self.0(args));
-                    // Remove event (by making it a NoneEvent).
-                    *ev = NoneEvent();
+                    let mut evs = EventStream::from(ev);
+                    self.0(args).run(&mut evs);
+                    results.insert(i, evs);
                 },
                 _ => {},
             }
         }
 
-        for f in filters {
-            f.run(evs);
+        // Then replace the events by their results.
+        for (i, r_evs) in results {
+            evs.splice(i..i+1, r_evs);
         }
+
+        evs.dedup();
     }
 
     // TODO run inverse, what would that mean?
 }
 
-/// Process the incoming OSC event using a function, which returns a patch to run.
+/// Process an incoming OSC event using a function, which returns a patch to run on the event.
 ///
-/// Note that matching OSC events are removed from the event stream.
-/// A maximum of eight arguments is currently supported (please open an issue if you need more).
+/// A maximum of eight OSC arguments is currently supported (please open an issue if you need more).
 ///
 /// # Examples
 ///
@@ -181,7 +186,27 @@ impl FilterTrait for _ProcessOsc {
 ///
 /// let mut evs = EventStream::from(OscEvent(0, "/foo".to_string(), vec![o::Int(60)]));
 /// filter.run(&mut evs);
-/// assert_eq!(evs, vec![NoneEvent(), NoteOnEvent(0,0,60,30)]);
+/// assert_eq!(evs, NoteOnEvent(0,0,60,30));
+/// # }
+/// ```
+///
+/// ```
+/// # #[macro_use] extern crate rmididings;
+/// # use rmididings::proc::*;
+/// use rosc::OscType as o;
+///
+/// # fn main() {
+/// let filter = Chain!(OscAddrFilter("/foo"), ProcessOsc!(o::Int, |i| NoteOn(i as u8, 30)));
+///
+/// let ev1 = OscEvent(0, "/foo".to_string(), vec![o::Int(60)]);
+/// let ev2 = OscEvent(0, "/foo".to_string(), vec![o::Int(60), o::Int(10)]);
+/// let ev3 = OscEvent(0, "/foo".to_string(), vec![o::Float(1.0)]);
+/// let ev4 = OscEvent(0, "/foo".to_string(), vec![]);
+/// let ev5 = NoteOnEvent(0,0,62,30);
+///
+/// let mut evs = EventStream::from(vec![&ev1, &ev2, &ev3, &ev4, &ev5]);
+/// filter.run(&mut evs);
+/// assert_eq!(evs, vec![NoteOnEvent(0,0,60,30), ev2, ev3, ev4, ev5]);
 /// # }
 /// ```
 #[macro_export]

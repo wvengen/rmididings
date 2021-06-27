@@ -53,6 +53,11 @@ impl<'a> EventStream<'a> {
         self.events = other.events;
     }
 
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> std::vec::Splice<'_, <I as IntoIterator>::IntoIter>
+            where R: std::ops::RangeBounds<usize>, I: IntoIterator<Item = Event<'a>>{
+        self.events.splice(range, replace_with)
+    }
+
     /// EventStream with a single None event.
     ///
     /// This is used mainly for init and exit patches, so that e.g. a {SceneSwitch}

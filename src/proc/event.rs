@@ -21,6 +21,53 @@ pub enum Event<'a> {
     #[cfg(feature = "dbus")]
     Dbus(DbusEventImpl),
 }
+impl Event<'_> {
+    pub fn port(&self) -> Option<usize> {
+        match self {
+            Event::NoteOn(ref ev) => Some(ev.port),
+            Event::NoteOff(ref ev) => Some(ev.port),
+            Event::Ctrl(ref ev) => Some(ev.port),
+            Event::SysEx(ref ev) => Some(ev.port),
+            #[cfg(feature = "osc")]
+            Event::Osc(ref ev) => Some(ev.port),
+            #[cfg(feature = "dbus")]
+            Event::Dbus(ref ev) => Some(ev.port),
+            _ => None,
+        }
+    }
+
+    pub fn set_port(&mut self, port: usize) -> bool {
+        match self {
+            Event::NoteOn(ref mut ev) => { ev.port = port; true },
+            Event::NoteOff(ref mut ev) => { ev.port = port; true },
+            Event::Ctrl(ref mut ev) => { ev.port = port; true },
+            Event::SysEx(ref mut ev) => { ev.port = port; true },
+            #[cfg(feature = "osc")]
+            Event::Osc(ref mut ev) => { ev.port = port; true },
+            #[cfg(feature = "dbus")]
+            Event::Dbus(ref mut ev) => { ev.port = port; true },
+            _ => false,
+        }
+    }
+
+    pub fn channel(&self) -> Option<u8> {
+        match self {
+            Event::NoteOn(ev) => Some(ev.channel),
+            Event::NoteOff(ev) => Some(ev.channel),
+            Event::Ctrl(ev) => Some(ev.channel),
+            _ => None,
+        }
+    }
+
+    pub fn set_channel(&mut self, channel: u8) -> bool {
+        match self {
+            Event::NoteOn(ref mut ev) => { ev.channel = channel; true },
+            Event::NoteOff(ref mut ev) => { ev.channel = channel; true },
+            Event::Ctrl(ref mut ev) => { ev.channel = channel; true },
+            _ => false,
+        }
+    }
+}
 impl Default for Event<'_> {
     fn default() -> Self {
         Event::None(NoneEventImpl::default())

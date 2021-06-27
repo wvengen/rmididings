@@ -570,7 +570,7 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = NoteOn(60, 20);
     ///
-    /// let mut evs = EventStream::empty();
+    /// let mut evs = EventStream::none();
     /// generator.run(&mut evs);
     /// assert_eq!(evs, NoteOnEvent(0, 0, 60, 20))
     /// ```
@@ -594,7 +594,7 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = NoteOff(65);
     ///
-    /// let mut evs = EventStream::empty();
+    /// let mut evs = EventStream::none();
     /// generator.run(&mut evs);
     /// assert_eq!(evs, NoteOffEvent(0, 0, 65))
     /// ```
@@ -618,7 +618,7 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = Ctrl(7, 40);
     ///
-    /// let mut evs = EventStream::empty();
+    /// let mut evs = EventStream::none();
     /// generator.run(&mut evs);
     /// assert_eq!(evs, CtrlEvent(0, 0, 7, 40));
     /// ```
@@ -642,7 +642,7 @@ define_generator!(
     /// # use rmididings::proc::*;
     /// let generator = SysEx(&[0xf7, 0xf0]);
     ///
-    /// let mut evs = EventStream::empty();
+    /// let mut evs = EventStream::none();
     /// generator.run(&mut evs);
     /// assert_eq!(evs, SysExEvent(0, &[0xf7, 0xf0]));
     /// ```
@@ -936,101 +936,89 @@ impl FilterTrait for SceneSwitch {
     }
 }
 
-/// Change the current scene by the specified amount.
-///
-/// The argument is: _scene_delta_.
-///
-/// This event removes all non-scene-switch evens.
-///
-/// To go to the next scene, use `SceneSwitchOffset(1)`,
-/// to go to the previous scene, use `SceneSwitchOffset(-1)`.
-///
-/// Note that the scene is only switched when there are events, so
-/// that when an event filter discards all events, the scene switch
-/// is not done. It also means that you need to generate an event
-/// when putting this in a pre, init, exit or post patch.
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let generator = SceneSwitchOffset(1);
-///
-/// let mut evs = EventStream::none();
-/// generator.run(&mut evs);
-/// assert_eq!(evs, SceneSwitchOffsetEvent(1));
-/// ```
-pub struct SceneSwitchOffset(pub SceneOffset);
-impl FilterTrait for SceneSwitchOffset {
-    fn run(&self, evs: &mut EventStream) {
-        if evs.is_empty() { return; }
-        TypeFilter!(SceneSwitch).run(evs);
-        evs.push(SceneSwitchOffsetEvent(self.0));
+define_generator!(
+    /// Change the current scene by the specified amount.
+    ///
+    /// The argument is: _scene_delta_.
+    ///
+    /// To go to the next scene, use `SceneSwitchOffset(1)`,
+    /// to go to the previous scene, use `SceneSwitchOffset(-1)`.
+    ///
+    /// Note that the scene is only switched when there are events, so
+    /// that when an event filter discards all events, the scene switch
+    /// is not done. It also means that you need to generate an event
+    /// when putting this in a pre, init, exit or post patch.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use rmididings::proc::*;
+    /// let generator = SceneSwitchOffset(1);
+    ///
+    /// let mut evs = EventStream::none();
+    /// generator.run(&mut evs);
+    /// assert_eq!(evs, SceneSwitchOffsetEvent(1));
+    /// ```
+    SceneSwitchOffset(SceneOffset)
+    fn generate_single(&self) -> Event<'static> {
+        SceneSwitchOffsetEvent(self.0)
     }
-}
+);
 
-/// Switches to a specific subscene.
-///
-/// The argument is: _subscene_number_.
-///
-/// This event removes all non-scene-switch evens.
-///
-/// Note that the subscene is only switched when there are events, so
-/// that when an event filter discards all events, the subscene switch
-/// is not done. It also means that you need to generate an event
-/// when putting this in a pre, init, exit or post patch.
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let modifier = SubSceneSwitch(5);
-///
-/// let mut evs = EventStream::none();
-/// modifier.run(&mut evs);
-/// assert_eq!(evs, SubSceneSwitchEvent(5));
-/// ```
-pub struct SubSceneSwitch(pub SceneNum);
-impl FilterTrait for SubSceneSwitch {
-    fn run(&self, evs: &mut EventStream) {
-        if evs.is_empty() { return; }
-        TypeFilter!(SceneSwitch).run(evs);
-        evs.push(SubSceneSwitchEvent(self.0));
+define_generator!(
+    /// Switches to a specific subscene.
+    ///
+    /// The argument is: _subscene_number_.
+    ///
+    /// Note that the subscene is only switched when there are events, so
+    /// that when an event filter discards all events, the subscene switch
+    /// is not done. It also means that you need to generate an event
+    /// when putting this in a pre, init, exit or post patch.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use rmididings::proc::*;
+    /// let modifier = SubSceneSwitch(5);
+    ///
+    /// let mut evs = EventStream::none();
+    /// modifier.run(&mut evs);
+    /// assert_eq!(evs, SubSceneSwitchEvent(5));
+    /// ```
+    SubSceneSwitch(SceneNum)
+    fn generate_single(&self) -> Event<'static> {
+        SubSceneSwitchEvent(self.0)
     }
-}
+);
 
-/// Change the current subscene by the specified amount.
-///
-/// The argument is: _subscene_delta_.
-///
-/// This event removes all non-scene-switch evens.
-///
-/// To go to the next scene, use `SubSceneSwitchOffset(1)`,
-/// to go to the previous scene, use `SubSceneSwitchOffset(-1)`.
-///
-/// Note that the subscene is only switched when there are events, so
-/// that when an event filter discards all events, the subscene switch
-/// is not done. It also means that you need to generate an event
-/// when putting this in a pre, init, exit or post patch.
-///
-/// # Examples
-///
-/// ```
-/// # use rmididings::proc::*;
-/// let generator = SubSceneSwitchOffset(1);
-///
-/// let mut evs = EventStream::none();
-/// generator.run(&mut evs);
-/// assert_eq!(evs, SubSceneSwitchOffsetEvent(1));
-/// ```
-pub struct SubSceneSwitchOffset(pub SceneOffset);
-impl FilterTrait for SubSceneSwitchOffset {
-    fn run(&self, evs: &mut EventStream) {
-        if evs.is_empty() { return; }
-        TypeFilter!(SceneSwitch).run(evs);
-        evs.push(SubSceneSwitchOffsetEvent(self.0));
+define_generator!(
+    /// Change the current subscene by the specified amount.
+    ///
+    /// The argument is: _subscene_delta_.
+    ///
+    /// To go to the next scene, use `SubSceneSwitchOffset(1)`,
+    /// to go to the previous scene, use `SubSceneSwitchOffset(-1)`.
+    ///
+    /// Note that the subscene is only switched when there are events, so
+    /// that when an event filter discards all events, the subscene switch
+    /// is not done. It also means that you need to generate an event
+    /// when putting this in a pre, init, exit or post patch.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use rmididings::proc::*;
+    /// let generator = SubSceneSwitchOffset(1);
+    ///
+    /// let mut evs = EventStream::none();
+    /// generator.run(&mut evs);
+    /// assert_eq!(evs, SubSceneSwitchOffsetEvent(1));
+    /// ```
+    SubSceneSwitchOffset(SceneOffset)
+    fn generate_single(&self) -> Event<'static> {
+        SubSceneSwitchOffsetEvent(self.0)
     }
-}
+);
 
 #[doc(hidden)]
 pub struct _Init<'a>(pub Box<dyn FilterTrait + 'a>);
