@@ -7,13 +7,14 @@ in [Rust](https://www.rust-lang.org/), allowing one to use a syntax not unlike
 mididings for MIDI event routing and processing. Mididings is a Python-based
 MIDI router and processor.
 
-It is in early development, and many things are not available. What is:
+It is in somewhat early development, and many things are not available. What is:
 - `NoteOn`, `NoteOff`, `Ctrl` and `SysEx` events.
-- Only supports the `alsa` backend, which ties it to Linux.
+- Supports the `alsa` backend, which ties it to Linux.
 - A limited set of filters, modifiers and generators.
 - A limited set of connections: `Chain!`, `Fork!` and `Not!`.
 - Scenes and subscenes, scene switching and running a single patch.
 - Pre, post, init, exit and control patches.
+- (new) native `Osc` events, which can be handled in a patch.
 
 Some missing things can be implemented, but there are some limitations using Rust,
 e.g. syntax can differ, and not all variations of argument types to filters etc.
@@ -63,7 +64,7 @@ name = "myproject"
 version = "0.0.1"
 
 [dependencies]
-rmididings = "^0.1.0"
+rmididings = "^0.2.0"
 ```
 
 Then, from within the project directory, run `cargo run`, and you're set. This sample
@@ -126,10 +127,7 @@ to switch between the scenes.
 
 ## Plans
 
-- OSC support, with filters etc. like MIDI (this was hard to do in mididings without threading issues).
-- Improving syntax with macros.
-- Adding port connected / disconnected event types.
-- Make `SysEx` work without needing to borrow (allows returning them from a function).
+See [issues](https://github.com/wvengen/rmididings/issues).
 
 ## License
 
