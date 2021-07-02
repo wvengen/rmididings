@@ -15,14 +15,6 @@ use rmididings::osc::OscType as o;
 ///
 /// Note that this uses a Carla-internal OSC protocol, which could change between
 /// Carla versions. It was tested with Carla version 2.3.0.
-///
-/// There are many loose ends, still. One thing is that no exit patch is run when
-/// Ctrl-C is pressed, making it impossible to run this program again. So after
-/// running this, you may want to to run manually:
-///
-///     oscsend osc.tcp://localhost:22752 /unregister s 127.0.0.1
-///
-/// Another way is to stop and start the Carla engine.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut md = RMididings::new()?;
 
@@ -49,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     |action: &i32, plugin_id: &i32, ival: &i32, _, _, fval: &f32, _| {
                         // Only react to value changed callback for the first plugin and the first parameter.
                         if *action == 5 && *plugin_id == 0 && *ival == 0 {
-                            Chain!(Ctrl(1, *fval as i32), Synth())
+                            Chain!(Ctrl(1, (*fval * 127.0) as i32), Synth())
                         } else {
                             Chain!(Discard())
                         }
@@ -62,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CtrlFilter(1),
                 Process!(|ev: &Event| {
                     match ev {
-                        Event::Ctrl(ev) => Box::new(CarlaSetParamValue(0, 0, ev.value as f32)),
+                        Event::Ctrl(ev) => Box::new(CarlaSetParamValue(0, 0, ev.value as f32 / 127.0)),
                         _ => Box::new(Discard()),
                     }
                 })

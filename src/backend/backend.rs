@@ -18,7 +18,7 @@ pub trait Backend<'a> {
 
     fn get_pollfds(&mut self) -> Result<Vec<libc::pollfd>, Box<dyn Error>>;
 
-    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>>;
+    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<(EventStream<'evs>, bool), Box<dyn Error>>;
 
     fn output_event(&mut self, ev: &Event) -> Result<u32, Box<dyn Error>>;
 }

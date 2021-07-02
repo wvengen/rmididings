@@ -168,8 +168,9 @@ impl<'a> Backend<'a> for OscBackend<'a> {
         Ok(pollfds)
     }
 
-    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>> {
+    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<(EventStream<'evs>, bool), Box<dyn Error>> {
         let mut evs = EventStream::empty();
+        let mut new_connection = false;
 
         for (backend_port, port) in self.in_ports.iter_mut() {
             if let Some(udp_listener) = &port.udp_listener {
@@ -186,6 +187,7 @@ impl<'a> Backend<'a> for OscBackend<'a> {
                             stream.set_nonblocking(true)?;
                             // stream.set_nodelay(true)?;
                             port.tcp_listen_streams.push(stream);
+                            new_connection = true;
                         },
                         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => { break; },
                         Err(e) => { return Err(Box::new(e)) },
@@ -210,7 +212,7 @@ impl<'a> Backend<'a> for OscBackend<'a> {
         //     }
         // }
 
-        Ok(evs)
+        Ok((evs, new_connection))
     }
 
     fn output_event(&mut self, ev: &Event) -> Result<u32, Box<dyn Error>> {

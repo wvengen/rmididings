@@ -105,20 +105,20 @@ impl Backend<'_> for AlsaBackend {
         Ok((&self.alsaseq, Some(alsa::Direction::Capture)).get()?)
     }
 
-    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>> {
+    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<(EventStream<'evs>, bool), Box<dyn Error>> {
         let mut alsaseq_input = self.alsaseq.input();
         match alsaseq_input.event_input_pending(true) {
             Ok(count) if count > 0 => {
-                Ok(EventStream::from(self.alsaseq_event_to_event(&alsaseq_input.event_input()?)?))
+                Ok((EventStream::from(self.alsaseq_event_to_event(&alsaseq_input.event_input()?)?), false))
             },
-            Ok(_) => Ok(EventStream::empty()),
+            Ok(_) => Ok((EventStream::empty(), false)),
             // Occasionally, this function may return -ENOSPC error. This means that the input FIFO of
             // sequencer overran, and some events are lost. Once this error is returned, the input FIFO
             // is cleared automatically.
             // TODO emit a warning?
             Err(e) if e.nix_error() == alsa::nix::Error::Sys(alsa::nix::errno::Errno::ENOSPC) => {
                 println!("Buffer overrun");
-                Ok(EventStream::empty())
+                Ok((EventStream::empty(), false))
             },
             Err(e) => Err(Box::new(e)),
         }

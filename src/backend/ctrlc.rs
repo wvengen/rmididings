@@ -61,9 +61,9 @@ impl Backend<'_> for CtrlcBackend {
         Ok(vec![libc::pollfd { fd: unsafe { PIPE.0 }, events: 1, revents: 0 }])
     }
 
-    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>> {
+    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<(EventStream<'evs>, bool), Box<dyn Error>> {
         // We are only called when our fd has events, so we can directly return the event.
-        Ok(EventStream::from(QuitEvent()))
+        Ok((EventStream::from(QuitEvent()), false))
     }
 
     fn output_event(&mut self, _ev: &Event) -> Result<u32, Box<dyn Error>> {

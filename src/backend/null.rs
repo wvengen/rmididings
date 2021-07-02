@@ -46,8 +46,8 @@ impl Backend<'_> for NullBackend {
         Ok(vec![])
     }
 
-    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<EventStream<'evs>, Box<dyn Error>> {
-        Ok(EventStream::empty())
+    fn run<'evs: 'run, 'run>(&'run mut self) -> Result<(EventStream<'evs>, bool), Box<dyn Error>> {
+        Ok((EventStream::empty(), false))
     }
 
     fn output_event(&mut self, _ev: &Event) -> Result<u32, Box<dyn Error>> {

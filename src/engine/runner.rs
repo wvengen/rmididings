@@ -70,21 +70,7 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        // Gather polling file descriptors
-        let mut pollfds: Vec<libc::pollfd> = vec![];
-        let mut pollfd_backend_idx: HashMap<libc::c_int, usize> = HashMap::new();
-
-        for (i, backend) in self.backends.iter_mut().enumerate() {
-            let backend_pollfds = backend.get_pollfds()?;
-            // remember which fd belongs to which backend
-            for pollfd in backend_pollfds.iter() {
-                pollfd_backend_idx.insert(pollfd.fd, i);
-            }
-            // add them to the list for poll()
-            pollfds.extend(backend_pollfds);
-        }
-
-        // Setup scene
+       // Setup scene
         if !self.scenes.is_empty() {
             self.current_scene_num = Some(self.initial_scene_num);
 
@@ -97,7 +83,10 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
         self.run_current_scene_init()?;
         self.run_current_subscene_init()?;
 
-        // Main runner loop
+        let (mut pollfds, mut pollfd_backend_idxs) = self.get_poll_fds()?;
+        let mut pollfds_need_update = false;
+
+        // Then wait until we get new events
         while self.running {
             // Wait until there is a new event
             poll(&mut pollfds, 1000);
@@ -106,16 +95,29 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
             for pollfd in pollfds.iter() {
                 if pollfd.revents == 0 { continue; }
 
-                if let Some(backend_idx) = pollfd_backend_idx.get(&pollfd.fd) {
+                if let Some(backend_idx) = pollfd_backend_idxs.get(&pollfd.fd) {
                     if let Some(backend) = self.backends.get_mut(*backend_idx) {
-                        for mut ev in backend.run()?.into_iter() {
+                        let (evs, backend_pollfds_need_update) = backend.run()?;
+                        for mut ev in evs.into_iter() {
                             self.backend_event_to_user(&mut ev);
                             self.run_current_patches(&ev)?;
                         }
+                        pollfds_need_update |= backend_pollfds_need_update;
                     }
                 }
             }
+
+            // Update pollfds when a backend requested it.
+            if pollfds_need_update {
+                let pollfd_result = self.get_poll_fds()?;
+                pollfds = pollfd_result.0;
+                pollfd_backend_idxs = pollfd_result.1;
+                pollfds_need_update = false;
+            }
         }
+
+        self.run_current_subscene_exit()?;
+        self.run_current_scene_exit()?;
 
         Ok(())
     }
@@ -315,6 +317,24 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
                 );
             }
         }
+    }
+
+    fn get_poll_fds(&mut self) -> Result<(Vec<libc::pollfd>, HashMap<libc::c_int, usize>), Box<dyn Error>> {
+        // Gather polling file descriptors
+        let mut pollfds: Vec<libc::pollfd> = vec![];
+        let mut pollfd_backend_idxs: HashMap<libc::c_int, usize> = HashMap::new();
+
+        for (i, backend) in self.backends.iter_mut().enumerate() {
+            let backend_pollfds = backend.get_pollfds()?;
+            // remember which fd belongs to which backend
+            for pollfd in backend_pollfds.iter() {
+                pollfd_backend_idxs.insert(pollfd.fd, i);
+            }
+            // add them to the list for poll()
+            pollfds.extend(backend_pollfds);
+        }
+
+        Ok((pollfds, pollfd_backend_idxs))
     }
 
     fn get_stored_subscene_num(&self) -> &Option<SceneNum> {
