@@ -65,7 +65,7 @@ name = "myproject"
 version = "0.0.1"
 
 [dependencies]
-rmididings = "^0.2.0"
+rmididings = "^0.2.1"
 ```
 
 Then, from within the project directory, run `cargo run`, and you're set. This sample
@@ -115,8 +115,8 @@ md.run(RunArguments {
         }
     ],
     control: &Fork!(
-      Chain!(KeyFilter(62), SceneSwitch(2), Discard()),
-      Chain!(KeyFilter(60), SceneSwitch(1), Discard())
+      Chain!(TypeFilter!(Note), KeyFilter(62), SceneSwitch(2)),
+      Chain!(TypeFilter!(Note), KeyFilter(60), SceneSwitch(1))
     ),
     ..RunArguments::default()
 })?;
