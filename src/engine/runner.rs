@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::collections::HashMap;
 
 use crate::proc::*;
 use crate::scene::*;
@@ -71,9 +72,16 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         // Gather polling file descriptors
         let mut pollfds: Vec<libc::pollfd> = vec![];
+        let mut pollfd_backend_idx: HashMap<libc::c_int, usize> = HashMap::new();
 
-        for backend in self.backends.iter_mut() {
-            pollfds.extend(backend.get_pollfds()?);
+        for (i, backend) in self.backends.iter_mut().enumerate() {
+            let backend_pollfds = backend.get_pollfds()?;
+            // remember which fd belongs to which backend
+            for pollfd in backend_pollfds.iter() {
+                pollfd_backend_idx.insert(pollfd.fd, i);
+            }
+            // add them to the list for poll()
+            pollfds.extend(backend_pollfds);
         }
 
         // Setup scene
@@ -91,15 +99,22 @@ impl<'a, 'backend: 'a> Runner<'a, 'backend> {
 
         // Main runner loop
         while self.running {
-            // Backend
-            let events: EventStream = self.backends.iter_mut().flat_map(|b| b.run()).collect();
-            for mut ev in events.into_iter() {
-                self.backend_event_to_user(&mut ev);
-                self.run_current_patches(&ev)?;
-            }
-
             // Wait until there is a new event
             poll(&mut pollfds, 1000);
+
+            // Allow the backends to run which have fds with events waiting
+            for pollfd in pollfds.iter() {
+                if pollfd.revents == 0 { continue; }
+
+                if let Some(backend_idx) = pollfd_backend_idx.get(&pollfd.fd) {
+                    if let Some(backend) = self.backends.get_mut(*backend_idx) {
+                        for mut ev in backend.run()?.into_iter() {
+                            self.backend_event_to_user(&mut ev);
+                            self.run_current_patches(&ev)?;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())

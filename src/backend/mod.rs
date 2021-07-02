@@ -6,6 +6,9 @@ pub use self::backend::{Backend, PortNum};
 mod null;
 pub use self::null::NullBackend;
 
+mod ctrlc;
+pub use self::ctrlc::CtrlcBackend;
+
 #[cfg(feature = "alsa")]
 mod alsa;
 #[cfg(feature = "alsa")]

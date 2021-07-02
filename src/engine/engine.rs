@@ -68,6 +68,7 @@ impl<'a, 'cfgargs: 'a> RMididings<'a> {
                 #[cfg(feature = "alsa")]
                 BackendType::Alsa => Box::new(AlsaBackend::new()?),
             },
+            Box::new(CtrlcBackend::new()?),
             // TODO include Osc backend only when osc ports are defined
             #[cfg(feature = "osc")]
             Box::new(OscBackend::new()?),
