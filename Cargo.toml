@@ -16,6 +16,7 @@ default = ["alsa", "osc"]
 osc = ["rosc"]
 
 [dependencies]
+rmididings-macros = { path = "./macros" }
 libc = "^0.2.97"
 alsa = { version = "^0.5.0", optional = true }
 rosc = { version = "^0.5.2", optional = true }
