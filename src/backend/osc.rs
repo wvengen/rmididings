@@ -158,8 +158,6 @@ impl<'a> Backend<'a> for OscBackend<'a> {
             if let Some(tcp_listener) = &port.tcp_listener {
                 pollfds.push(libc::pollfd { fd: tcp_listener.as_raw_fd(), events: 1, revents: 0 });
             }
-            // TODO This doesn't work, as there are no pollfds yet, only after connecting
-            //      and they are not picked up. Needs pollfds update during run.
             for tcp_stream in port.tcp_listen_streams.iter() {
                 pollfds.push(libc::pollfd { fd: tcp_stream.as_raw_fd(), events: 1, revents: 0 });
             }
